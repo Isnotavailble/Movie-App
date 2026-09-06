@@ -137,12 +137,29 @@ object DirectDownloadResolver {
      * Checks whether a URL belongs to a known web portal that hosts HTML landing pages.
      */
     fun isKnownWebPortal(url: String): Boolean {
-        val lower = url.lowercase().substringBefore("?")
-        if (lower.endsWith(".mp4") || lower.endsWith(".mkv") || lower.endsWith(".webm") || lower.endsWith(".avi")) return false
-        return lower.contains("yoteshinportal.cc") ||
-                lower.contains("usersdrive.com") ||
-                lower.contains("bioscopeapp.com") ||
-                lower.contains("drive.google.com/file")
+        val cleanUrl = url.lowercase().trim()
+        val pathWithoutQuery = cleanUrl.substringBefore("?")
+
+        // MegaUp landing pages and challenge dispatcher (direct storage links are s*.megaup.net or storage.megaup.net)
+        if (cleanUrl.contains("megaup.net") &&
+            !cleanUrl.matches(Regex("""^https?://(?:s\d+|storage)\.megaup\.net/.*"""))
+        ) {
+            return true
+        }
+
+        // Direct media files that are NOT megaup landing pages
+        if (pathWithoutQuery.endsWith(".mp4") ||
+            pathWithoutQuery.endsWith(".mkv") ||
+            pathWithoutQuery.endsWith(".webm") ||
+            pathWithoutQuery.endsWith(".avi")
+        ) {
+            return false
+        }
+
+        return cleanUrl.contains("yoteshinportal.cc") ||
+                cleanUrl.contains("usersdrive.com") ||
+                cleanUrl.contains("bioscopeapp.com") ||
+                cleanUrl.contains("drive.google.com/file")
     }
 
     /**

@@ -77,6 +77,21 @@ class WebViewSnifferUnitTest {
     fun testSnifferMediaDetection_megaupChallengeUrl_rejected() {
         assertFalse(WebViewDownloadSniffer.isMediaStream("https://download.megaup.net/?url=abc", null))
         assertFalse(WebViewDownloadSniffer.isMediaStream("https://download.megaup.net/?url=abc", "text/html"))
+        assertFalse(WebViewDownloadSniffer.isMediaStream("https://download.megaup.net/", null))
+    }
+
+    @Test
+    @Trait(category = "negative", secondary = "critical-path")
+    fun testSnifferMediaDetection_megaupLandingPageWithMovieFilename_rejected() {
+        // MegaUp landing page URLs end with .mp4 but are actually HTML pages, not direct video files!
+        val landingPageUrl = "https://megaup.net/34b80bbb30a44b69fe97c96018651be8/The.Yellow.Elephant.2013.720p.mp4"
+        assertFalse("MegaUp landing page ending in .mp4 must NOT be treated as a media stream",
+            WebViewDownloadSniffer.isMediaStream(landingPageUrl, null))
+
+        // Direct storage CDN URL must be recognized
+        val directCdnUrl = "https://s14.megaup.net/storage/The.Yellow.Elephant.2013.720p.mp4"
+        assertTrue("MegaUp storage CDN URL must be recognized as media stream",
+            WebViewDownloadSniffer.isMediaStream(directCdnUrl, null))
     }
 
     @Test
@@ -120,11 +135,14 @@ class WebViewSnifferUnitTest {
         // Direct media files even hosted on portal domains are valid media files
         assertFalse(DirectDownloadResolver.isKnownWebPortal("https://usersdrive.com/files/movie.mp4"))
         assertFalse(DirectDownloadResolver.isKnownWebPortal("https://yoteshinportal.cc/download/movie.mkv"))
+        assertFalse(DirectDownloadResolver.isKnownWebPortal("https://s14.megaup.net/storage/The.Yellow.Elephant.2013.720p.mp4"))
 
         // HTML portal pages
         assertTrue(DirectDownloadResolver.isKnownWebPortal("https://usersdrive.com/sample999.html"))
         assertTrue(DirectDownloadResolver.isKnownWebPortal("https://yoteshinportal.cc/hydra-2025"))
         assertTrue(DirectDownloadResolver.isKnownWebPortal("https://drive.google.com/file/d/123/view"))
+        assertTrue(DirectDownloadResolver.isKnownWebPortal("https://megaup.net/34b80bbb30a44b69fe97c96018651be8/The.Yellow.Elephant.2013.720p.mp4"))
+        assertTrue(DirectDownloadResolver.isKnownWebPortal("https://download.megaup.net/?url=https%3A%2F%2Fs14.megaup.net"))
     }
 
     @Test
