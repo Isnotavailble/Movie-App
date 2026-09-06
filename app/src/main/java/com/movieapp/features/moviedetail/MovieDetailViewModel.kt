@@ -17,7 +17,8 @@ data class MovieDetailUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val isTvShow: Boolean = false,
-    val selectedSeasonNumber: Int = 1
+    val selectedSeasonNumber: Int = 1,
+    val isBookmarked: Boolean = false
 ) {
     val activeSeason: SeasonDTO?
         get() = detail?.safeSeasons?.find { it.seasonNumber == selectedSeasonNumber }
@@ -45,6 +46,12 @@ class MovieDetailViewModel(
         currentSlug = slug
         currentIsTv = isTvShow
         _uiState.update { it.copy(isTvShow = isTvShow, isLoading = true, errorMessage = null) }
+
+        viewModelScope.launch {
+            repository.isBookmarked(slug).collect { bookmarked ->
+                _uiState.update { it.copy(isBookmarked = bookmarked ?: false) }
+            }
+        }
 
         viewModelScope.launch {
             val flow = if (isTvShow) {
@@ -80,6 +87,17 @@ class MovieDetailViewModel(
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Toggles bookmark state for the current title.
+     */
+    fun toggleBookmark() {
+        val detail = _uiState.value.detail ?: return
+        viewModelScope.launch {
+            val newState = repository.toggleBookmark(detail, _uiState.value.isTvShow)
+            _uiState.update { it.copy(isBookmarked = newState) }
         }
     }
 

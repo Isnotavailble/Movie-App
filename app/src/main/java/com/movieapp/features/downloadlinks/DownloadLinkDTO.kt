@@ -52,6 +52,14 @@ data class DownloadLinkDTO(
                 (url?.contains("t.me", ignoreCase = true) == true)
 
     /**
+     * Checks whether this download link points to Yoteshin / Yoteshin Portal.
+     */
+    val isYoteshin: Boolean
+        get() = cleanServerName.contains("yoteshin", ignoreCase = true) ||
+                (url?.contains("yoteshinportal.cc", ignoreCase = true) == true) ||
+                (url?.startsWith("yoteshin://", ignoreCase = true) == true)
+
+    /**
      * Human-readable label combining server name, resolution, and file size.
      */
     val displayLabel: String

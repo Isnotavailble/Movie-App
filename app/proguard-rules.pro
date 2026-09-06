@@ -9,6 +9,14 @@
 -keepattributes *Annotation*
 -keepattributes EnclosingMethod
 -keepattributes InnerClasses
+-keepattributes RuntimeVisibleAnnotations,RuntimeVisibleParameterAnnotations
+
+# R8 Full Mode strips generic signatures from non-kept classes.
+# Kotlin suspend functions use Continuation<T> as the last parameter,
+# where T is the response type inspected by Retrofit via reflection.
+-keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation
+-keep,allowobfuscation,allowshrinking interface retrofit2.Call
+-keep,allowobfuscation,allowshrinking class retrofit2.Response
 
 # Keep DTO models in features
 -keep class com.movieapp.features.**.**DTO { *; }
@@ -23,7 +31,6 @@
 -keep class com.movieapp.network.** { *; }
 
 # Keep Gson itself
--keepattributes *Annotation*,Signature
 -keep class com.google.gson.** { *; }
 
 # Keep OkHttp and Retrofit

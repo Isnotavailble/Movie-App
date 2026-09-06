@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.MovieApp" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <!-- Disable system force dark to prevent Android OS/MIUI from inverting text colors to white -->
+        <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
+    </style>
+</resources>

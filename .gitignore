@@ -40,3 +40,5 @@ Thumbs.db
 
 .env
 local.properties
+font
+app/src/main/assets/fonts_metadata.json
