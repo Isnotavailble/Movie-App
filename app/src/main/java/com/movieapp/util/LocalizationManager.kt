@@ -91,7 +91,26 @@ object LocalizationManager {
         "install_telegram_prompt" to "Please install Telegram to download via this link",
         "open_movie" to "Play Video",
         "delete_download" to "Delete",
-        "opening_browser_for_full_video" to "Opening download page in browser to download full video file..."
+        "opening_browser_for_full_video" to "Opening download page in browser to download full video file...",
+        "search_movies_placeholder" to "Search movies...",
+        "search_tv_shows_placeholder" to "Search TV shows...",
+        "search_no_movies_found" to "No movies found",
+        "search_no_tv_shows_found" to "No TV shows found",
+        "cancel_download" to "Cancel Download",
+        "cancel" to "Cancel",
+        "download_cancelled" to "Download cancelled",
+        "yoteshin_action" to "Yoteshin Drive",
+        "open_in_yoteshin" to "Open in Yoteshin Drive",
+        "install_yoteshin_prompt" to "Please install Yoteshin Drive to download via this link",
+        "corrupt_html_download_error" to "Corrupt HTML download prevented. Please try another server or browser.",
+        "yoteshin_signin_title" to "Google Account Sign-In Required",
+        "yoteshin_signin_desc" to "YoteShin Portal files are stored on Google Drive. When opened in a browser, you must sign in with your Google Account before downloading.",
+        "yoteshin_app_hint" to "If you have Yoteshin Drive App installed, you can download directly without browser login.",
+        "yoteshin_open_app" to "Open with Yoteshin Drive",
+        "yoteshin_get_app" to "Get Yoteshin Drive App",
+        "yoteshin_open_browser_signin" to "Open in Browser & Sign In",
+        "yoteshin_login_badge" to "Google Sign-In",
+        "open_in_browser_action" to "Open in Browser to Download"
     )
 
     fun initialize(context: Context) {

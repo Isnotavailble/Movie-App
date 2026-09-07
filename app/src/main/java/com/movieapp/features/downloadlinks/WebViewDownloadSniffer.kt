@@ -55,7 +55,8 @@ object WebViewDownloadSniffer {
             cleanUrl.contains("challenge-platform") ||
             cleanUrl.contains(".html") ||
             cleanUrl.contains(".php") ||
-            cleanUrl.contains("download.megaup.net/?url=")
+            cleanUrl.contains("download.megaup.net") ||
+            (cleanUrl.contains("megaup.net") && !cleanUrl.matches(Regex("""^https?://(?:s\d+|storage)\.megaup\.net/.*""")))
         ) {
             return false
         }
@@ -80,6 +81,15 @@ object WebViewDownloadSniffer {
             pathWithoutQuery.endsWith(".webm") ||
             pathWithoutQuery.endsWith(".avi")
         ) {
+            // Reject web portal landing pages that append movie filenames to web URLs (e.g. megaup.net/hash/movie.mp4)
+            if (cleanUrl.contains("megaup.net") && !cleanUrl.matches(Regex("""^https?://(?:s\d+|storage)\.megaup\.net/.*"""))) {
+                return false
+            }
+            if ((cleanUrl.contains("://usersdrive.com/") || cleanUrl.contains("://www.usersdrive.com/")) &&
+                !cleanUrl.contains("/d/") && !cleanUrl.contains("/files/")
+            ) {
+                return false
+            }
             return true
         }
 

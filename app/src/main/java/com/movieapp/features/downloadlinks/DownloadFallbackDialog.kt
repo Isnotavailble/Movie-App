@@ -19,8 +19,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -52,7 +54,11 @@ fun DownloadFallbackDialog(
     onOpenYoteshin: (() -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
     val neoColors = MaterialTheme.neoColors
+    val isYoteshinInstalled = remember(link) {
+        if (link.isYoteshin) DownloadManagerHelper.isYoteshinDriveInstalled(context) else false
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Box(
@@ -71,13 +77,15 @@ fun DownloadFallbackDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (link.isYoteshin) "Yoteshin Download Options" else "Download Options",
+                        text = if (link.isYoteshin) t("yoteshin_signin_title") else "Download Options",
                         fontFamily = headerFontFamily(),
-                        fontSize = 18.sp,
-                        lineHeight = 24.sp,
+                        fontSize = 16.sp,
+                        lineHeight = 22.sp,
                         fontWeight = FontWeight.Bold,
-                        color = neoColors.textPrimary
+                        color = neoColors.textPrimary,
+                        modifier = Modifier.weight(1f)
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Box(
                         modifier = Modifier
                             .size(32.dp)
@@ -98,17 +106,69 @@ fun DownloadFallbackDialog(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                Text(
-                    text = if (link.isYoteshin) {
-                        "Yoteshin Portal requires the Yoteshin Drive app or Google Drive login. Choose an option below:"
-                    } else {
-                        "In-app stream could not be completed directly. Choose how you would like to download:"
-                    },
-                    fontFamily = bodyFontFamily(),
-                    fontSize = 13.sp,
-                    color = neoColors.textSecondary,
-                    lineHeight = 20.sp
-                )
+                if (link.isYoteshin) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(neoColors.secondary.copy(alpha = 0.2f), RoundedCornerShape(10.dp))
+                            .neoBorder(width = 1.5.dp, color = neoColors.border, shape = RoundedCornerShape(10.dp))
+                            .padding(12.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .background(neoColors.secondary, RoundedCornerShape(4.dp))
+                                        .neoBorder(width = 1.dp, color = neoColors.border, shape = RoundedCornerShape(4.dp))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "INFO",
+                                        fontFamily = buttonFontFamily(),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = neoColors.onSecondary
+                                    )
+                                }
+                                Text(
+                                    text = t("yoteshin_signin_title"),
+                                    fontFamily = headerFontFamily(),
+                                    fontSize = 12.5.sp,
+                                    lineHeight = 17.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = neoColors.textPrimary
+                                )
+                            }
+                            Text(
+                                text = t("yoteshin_signin_desc"),
+                                fontFamily = bodyFontFamily(),
+                                fontSize = 11.5.sp,
+                                lineHeight = 17.sp,
+                                color = neoColors.textPrimary
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = t("yoteshin_app_hint"),
+                                fontFamily = bodyFontFamily(),
+                                fontSize = 11.sp,
+                                lineHeight = 16.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = neoColors.textSecondary
+                            )
+                        }
+                    }
+                } else {
+                    Text(
+                        text = "In-app stream could not be completed directly. Choose how you would like to download:",
+                        fontFamily = bodyFontFamily(),
+                        fontSize = 13.sp,
+                        color = neoColors.textSecondary,
+                        lineHeight = 20.sp
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(6.dp))
 
@@ -153,7 +213,7 @@ fun DownloadFallbackDialog(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                // Primary Choice for Yoteshin: Open in Yoteshin Drive App
+                // Primary Choice for Yoteshin: Open in Yoteshin Drive App or Get App
                 if (link.isYoteshin && onOpenYoteshin != null) {
                     Button(
                         onClick = onOpenYoteshin,
@@ -178,7 +238,7 @@ fun DownloadFallbackDialog(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Open with Yoteshin Drive",
+                                text = if (isYoteshinInstalled) t("yoteshin_open_app") else t("yoteshin_get_app"),
                                 fontFamily = buttonFontFamily(),
                                 fontSize = 14.sp,
                                 lineHeight = 18.sp,
@@ -214,7 +274,7 @@ fun DownloadFallbackDialog(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Open in Browser to Download",
+                            text = if (link.isYoteshin) t("yoteshin_open_browser_signin") else t("open_in_browser_action"),
                             fontFamily = buttonFontFamily(),
                             fontSize = 14.sp,
                             lineHeight = 18.sp,
