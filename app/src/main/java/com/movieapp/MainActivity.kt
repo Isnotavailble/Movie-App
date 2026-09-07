@@ -1,9 +1,15 @@
 package com.movieapp
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -40,6 +46,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -82,14 +92,54 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainAppScaffold() {
+    val context = LocalContext.current
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val notificationPermissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission()
+        ) { /* permission choice handled */ }
+
+        LaunchedEffect(Unit) {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
+    val currentDestination = navBackStackEntry?.destination
+    val currentRoute = currentDestination?.route
     val neoColors = MaterialTheme.neoColors
 
     val movieListViewModel: MovieListViewModel = viewModel()
     val searchViewModel: SearchViewModel = viewModel()
     val movieDetailViewModel: MovieDetailViewModel = viewModel()
+
+    val moviesGridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    val tvShowsGridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+
+    val activeScreen: Screen = when {
+        currentRoute == Screen.Detail.route -> {
+            val isTv = navBackStackEntry?.arguments?.getBoolean("isTv") ?: false
+            val prevRoute = navController.previousBackStackEntry?.destination?.route
+            when {
+                prevRoute == Screen.Bookmarks.route -> Screen.Bookmarks
+                prevRoute == Screen.Downloads.route -> Screen.Downloads
+                isTv || prevRoute == Screen.TvShows.route -> Screen.TvShows
+                else -> Screen.Movies
+            }
+        }
+        currentRoute == Screen.TvShows.route -> Screen.TvShows
+        currentRoute == Screen.Bookmarks.route -> Screen.Bookmarks
+        currentRoute == Screen.Downloads.route -> Screen.Downloads
+        currentRoute == Screen.Movies.route || currentRoute == null -> Screen.Movies
+        else -> {
+            if (currentDestination.hierarchy.any { it.route == Screen.TvShows.route }) Screen.TvShows
+            else if (currentDestination.hierarchy.any { it.route == Screen.Bookmarks.route }) Screen.Bookmarks
+            else if (currentDestination.hierarchy.any { it.route == Screen.Downloads.route }) Screen.Downloads
+            else Screen.Movies
+        }
+    }
 
     Scaffold(
         containerColor = neoColors.background,
@@ -98,12 +148,23 @@ fun MainAppScaffold() {
         },
         bottomBar = {
             BottomNavigationNeobrutalist(
-                currentRoute = currentRoute,
+                activeScreen = activeScreen,
                 onNavigate = { screen ->
-                    navController.navigate(screen.route) {
-                        popUpTo(Screen.Movies.route) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
+                    if (currentRoute == Screen.Detail.route && activeScreen == screen) {
+                        navController.popBackStack()
+                    } else {
+                        if (screen == Screen.Movies) {
+                            movieListViewModel.selectCategory(MediaCategory.MOVIES)
+                        } else if (screen == Screen.TvShows) {
+                            movieListViewModel.selectCategory(MediaCategory.TV_SHOWS)
+                        }
+                        navController.navigate(screen.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 }
             )
@@ -112,14 +173,17 @@ fun MainAppScaffold() {
         NavHost(
             navController = navController,
             startDestination = Screen.Movies.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popEnterTransition = { EnterTransition.None },
+            popExitTransition = { ExitTransition.None }
         ) {
             composable(Screen.Movies.route) {
-                LaunchedEffect(Unit) {
-                    movieListViewModel.selectCategory(MediaCategory.MOVIES)
-                }
                 MovieListScreen(
                     viewModel = movieListViewModel,
+                    category = MediaCategory.MOVIES,
+                    gridState = moviesGridState,
                     onTitleClick = { slug, isTv ->
                         movieDetailViewModel.loadDetail(slug, isTv)
                         navController.navigate(Screen.Detail.createRoute(slug, isTv))
@@ -128,11 +192,10 @@ fun MainAppScaffold() {
             }
 
             composable(Screen.TvShows.route) {
-                LaunchedEffect(Unit) {
-                    movieListViewModel.selectCategory(MediaCategory.TV_SHOWS)
-                }
                 MovieListScreen(
                     viewModel = movieListViewModel,
+                    category = MediaCategory.TV_SHOWS,
+                    gridState = tvShowsGridState,
                     onTitleClick = { slug, isTv ->
                         movieDetailViewModel.loadDetail(slug, isTv)
                         navController.navigate(Screen.Detail.createRoute(slug, isTv))
@@ -297,71 +360,83 @@ fun TopAppBarNeobrutalist() {
 
 @Composable
 fun BottomNavigationNeobrutalist(
-    currentRoute: String?,
+    activeScreen: Screen,
     onNavigate: (Screen) -> Unit
 ) {
     val neoColors = MaterialTheme.neoColors
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(neoColors.surface)
-            .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(0.dp))
-            .padding(horizontal = 8.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceAround,
-        verticalAlignment = Alignment.CenterVertically
     ) {
-        val items = listOf(
-            Triple(Screen.Movies, t("nav_movies"), NeubrutalismIcons.Movie),
-            Triple(Screen.TvShows, t("nav_tv_shows"), NeubrutalismIcons.Tv),
-            Triple(Screen.Bookmarks, t("nav_bookmarks"), NeubrutalismIcons.Bookmark),
-            Triple(Screen.Downloads, t("nav_download"), NeubrutalismIcons.Download)
+        // Top border divider (Option 1: Top-Border Only)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .background(neoColors.border)
         )
 
-        items.forEach { (screen, label, icon) ->
-            val isSelected = currentRoute == screen.route
-            val activeColor = neoColors.primary
-            val inactiveColor = neoColors.textSecondary
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val items = listOf(
+                Triple(Screen.Movies, t("nav_movies"), NeubrutalismIcons.Movie),
+                Triple(Screen.TvShows, t("nav_tv_shows"), NeubrutalismIcons.Tv),
+                Triple(Screen.Bookmarks, t("nav_bookmarks"), NeubrutalismIcons.Bookmark),
+                Triple(Screen.Downloads, t("nav_download"), NeubrutalismIcons.Download)
+            )
 
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .defaultMinSize(minHeight = 52.dp)
-                    .clickable { onNavigate(screen) }
-                    .semantics {
-                        role = Role.Tab
-                        selected = isSelected
-                    }
-                    .padding(vertical = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                val contentColor = if (isSelected) activeColor else inactiveColor
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = contentColor,
-                    modifier = Modifier.size(22.dp)
-                )
-                Spacer(modifier = Modifier.height(3.dp))
-                Text(
-                    text = label,
-                    fontFamily = buttonFontFamily(),
-                    fontSize = 11.sp,
-                    lineHeight = 16.sp,
-                    fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium,
-                    color = contentColor,
-                    maxLines = 1
-                )
-                if (isSelected) {
-                    Spacer(modifier = Modifier.height(3.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(width = 16.dp, height = 3.dp)
-                            .background(activeColor, RoundedCornerShape(2.dp))
+            items.forEach { (screen, label, icon) ->
+                val isSelected = screen == activeScreen
+                val activeColor = neoColors.primary
+                val inactiveColor = neoColors.textSecondary
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .defaultMinSize(minHeight = 52.dp)
+                        .clickable { onNavigate(screen) }
+                        .semantics {
+                            role = Role.Tab
+                            selected = isSelected
+                        }
+                        .padding(vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    val contentColor = if (isSelected) activeColor else inactiveColor
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = contentColor,
+                        modifier = Modifier.size(22.dp)
                     )
-                } else {
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = label,
+                        fontFamily = buttonFontFamily(),
+                        fontSize = 11.sp,
+                        lineHeight = 16.sp,
+                        fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium,
+                        color = contentColor,
+                        maxLines = 1
+                    )
+                    if (isSelected) {
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(width = 16.dp, height = 3.dp)
+                                .background(activeColor, RoundedCornerShape(2.dp))
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
                 }
             }
         }

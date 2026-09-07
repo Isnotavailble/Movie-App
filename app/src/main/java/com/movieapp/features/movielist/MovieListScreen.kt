@@ -72,17 +72,19 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 fun MovieListScreen(
     viewModel: MovieListViewModel,
     onTitleClick: (slug: String, isTvShow: Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    category: MediaCategory? = null,
+    gridState: androidx.compose.foundation.lazy.grid.LazyGridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val gridState = rememberLazyGridState()
     val neoColors = MaterialTheme.neoColors
+    val targetCategory = category ?: uiState.activeCategory
 
     // Pull-to-refresh state
     val pullRefreshState = rememberPullToRefreshState()
     if (pullRefreshState.isRefreshing) {
         LaunchedEffect(true) {
-            viewModel.refresh()
+            viewModel.refresh(targetCategory)
         }
     }
 
@@ -93,23 +95,36 @@ fun MovieListScreen(
     }
 
     // Continuous Infinite Scrolling detection with distinctUntilChanged (US-03)
-    LaunchedEffect(gridState, uiState.activeCategory) {
+    // Pre-triggers 10 items (5 rows in a 2-col grid) before the bottom for smooth background pagination
+    LaunchedEffect(gridState, targetCategory) {
         snapshotFlow {
             val totalItems = gridState.layoutInfo.totalItemsCount
             val lastVisibleIndex = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            totalItems > 0 && lastVisibleIndex >= totalItems - 4
+            totalItems > 0 && lastVisibleIndex >= totalItems - 10
         }
         .distinctUntilChanged()
         .collect { shouldPaginate ->
-            if (shouldPaginate && !uiState.isPaginating && uiState.currentHasMore) {
-                viewModel.loadNextPage()
+            val hasMore = if (targetCategory == MediaCategory.MOVIES) uiState.moviesHasMore else uiState.tvShowsHasMore
+            val isSearch = if (targetCategory == MediaCategory.MOVIES) uiState.moviesSearchQuery.isNotBlank() else uiState.tvShowsSearchQuery.isNotBlank()
+            if (shouldPaginate && !uiState.isPaginating && hasMore && !isSearch) {
+                viewModel.loadNextPage(targetCategory)
             }
         }
     }
 
+    val searchQuery = if (targetCategory == MediaCategory.MOVIES) uiState.moviesSearchQuery else uiState.tvShowsSearchQuery
+    val isSearchActive = searchQuery.isNotBlank()
+    val displayList = if (isSearchActive) {
+        if (targetCategory == MediaCategory.MOVIES) uiState.moviesSearchResults else uiState.tvShowsSearchResults
+    } else {
+        if (targetCategory == MediaCategory.MOVIES) uiState.movies else uiState.tvShows
+    }
+    val isSearchEmpty = isSearchActive && !uiState.isSearching && displayList.isEmpty()
+
     Box(
         modifier = modifier
             .fillMaxSize()
+            .background(neoColors.background)
             .nestedScroll(pullRefreshState.nestedScrollConnection)
     ) {
         Column(
@@ -118,23 +133,29 @@ fun MovieListScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             // In-page search bar for Movies or TV Shows
-            val searchPlaceholder = if (uiState.activeCategory == MediaCategory.MOVIES) {
+            val searchPlaceholder = if (targetCategory == MediaCategory.MOVIES) {
                 t("search_movies_placeholder")
             } else {
                 t("search_tv_shows_placeholder")
             }
 
             InPageSearchBar(
-                query = uiState.currentSearchQuery,
+                query = searchQuery,
                 placeholder = searchPlaceholder,
-                onQueryChange = { viewModel.onSearchQueryChange(it) },
-                onClearClick = { viewModel.clearSearchQuery() }
+                onQueryChange = {
+                    viewModel.selectCategory(targetCategory)
+                    viewModel.onSearchQueryChange(it)
+                },
+                onClearClick = {
+                    viewModel.selectCategory(targetCategory)
+                    viewModel.clearSearchQuery()
+                }
             )
 
             Spacer(modifier = Modifier.height(14.dp))
 
             // Search Empty State
-            if (uiState.isSearchEmpty) {
+            if (isSearchEmpty) {
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -158,7 +179,7 @@ fun MovieListScreen(
                             modifier = Modifier.size(48.dp)
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        val emptyTitle = if (uiState.activeCategory == MediaCategory.MOVIES) {
+                        val emptyTitle = if (targetCategory == MediaCategory.MOVIES) {
                             t("search_no_movies_found")
                         } else {
                             t("search_no_tv_shows_found")
@@ -182,7 +203,7 @@ fun MovieListScreen(
                         )
                     }
                 }
-            } else if (uiState.isInitialLoading && uiState.currentDisplayList.isEmpty()) {
+            } else if (uiState.isInitialLoading && displayList.isEmpty()) {
                 // Initial Loading State with Skeleton Cards
                 com.movieapp.theme.MovieListFeedSkeleton(modifier = Modifier.weight(1f))
             } else {
@@ -195,10 +216,10 @@ fun MovieListScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     items(
-                        items = uiState.currentDisplayList,
+                        items = displayList,
                         key = { item ->
                             val idPart = if (item.id != 0L) item.id.toString() else item.slug ?: item.displayTitle
-                            "${uiState.activeCategory}_$idPart"
+                            "${targetCategory.name}_$idPart"
                         },
                         contentType = { "movie_card" }
                     ) { item ->
@@ -206,7 +227,7 @@ fun MovieListScreen(
                             item = item,
                             onClick = {
                                 val slug = item.slug ?: item.id.toString()
-                                val isTv = uiState.activeCategory == MediaCategory.TV_SHOWS
+                                val isTv = targetCategory == MediaCategory.TV_SHOWS
                                 onTitleClick(slug, isTv)
                             }
                         )
@@ -253,7 +274,7 @@ fun MovieListScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         NeoButton(
-                            onClick = { viewModel.retry() },
+                            onClick = { viewModel.retry(targetCategory) },
                             text = t("try_again"),
                             backgroundColor = neoColors.primary,
                             contentColor = neoColors.textPrimary

@@ -92,6 +92,7 @@ fun DownloadsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(neoColors.background)
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         // Screen Header

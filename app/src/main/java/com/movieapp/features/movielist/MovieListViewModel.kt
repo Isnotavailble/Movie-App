@@ -167,10 +167,11 @@ class MovieListViewModel(
     /**
      * Pull-to-refresh: resets page to 1 and reloads current active category.
      */
-    fun refresh() {
+    fun refresh(targetCategory: MediaCategory? = null) {
         val state = _uiState.value
+        val cat = targetCategory ?: state.activeCategory
         _uiState.update { it.copy(isRefreshing = true, errorMessage = null) }
-        if (state.activeCategory == MediaCategory.MOVIES) {
+        if (cat == MediaCategory.MOVIES) {
             fetchMoviesPage(1, isRefresh = true)
         } else {
             fetchTvShowsPage(1, isRefresh = true)
@@ -196,11 +197,14 @@ class MovieListViewModel(
     /**
      * Loads the next page of items for continuous infinite scrolling.
      */
-    fun loadNextPage() {
+    fun loadNextPage(targetCategory: MediaCategory? = null) {
         val state = _uiState.value
-        if (state.isInitialLoading || state.isPaginating || !state.currentHasMore || state.isSearchActive) return
+        val cat = targetCategory ?: state.activeCategory
+        val hasMore = if (cat == MediaCategory.MOVIES) state.moviesHasMore else state.tvShowsHasMore
+        val isSearch = if (cat == MediaCategory.MOVIES) state.moviesSearchQuery.isNotBlank() else state.tvShowsSearchQuery.isNotBlank()
+        if (state.isInitialLoading || state.isPaginating || !hasMore || isSearch) return
 
-        if (state.activeCategory == MediaCategory.MOVIES) {
+        if (cat == MediaCategory.MOVIES) {
             fetchMoviesPage(state.moviesPage + 1)
         } else {
             fetchTvShowsPage(state.tvShowsPage + 1)
@@ -210,9 +214,10 @@ class MovieListViewModel(
     /**
      * Retries loading after an error.
      */
-    fun retry() {
+    fun retry(targetCategory: MediaCategory? = null) {
         val state = _uiState.value
-        if (state.activeCategory == MediaCategory.MOVIES) {
+        val cat = targetCategory ?: state.activeCategory
+        if (cat == MediaCategory.MOVIES) {
             fetchMoviesPage(if (state.movies.isEmpty()) 1 else state.moviesPage + 1)
         } else {
             fetchTvShowsPage(if (state.tvShows.isEmpty()) 1 else state.tvShowsPage + 1)

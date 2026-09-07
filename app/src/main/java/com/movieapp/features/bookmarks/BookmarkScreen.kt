@@ -94,6 +94,7 @@ fun BookmarkScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .background(neoColors.background)
             .nestedScroll(pullRefreshState.nestedScrollConnection)
     ) {
         Column(
