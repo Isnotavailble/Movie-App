@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.movieapp.features.search.SearchRepository
 import com.movieapp.util.Resource
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -95,7 +96,7 @@ class MovieListViewModel(
     }
 
     private fun setupSearch() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.Default) {
             _searchQuery
                 .debounce(searchDebounceMillis)
                 .distinctUntilChanged()
@@ -225,7 +226,7 @@ class MovieListViewModel(
     }
 
     private fun fetchMoviesPage(page: Int, isRefresh: Boolean = false) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.Default) {
             repository.getMovies(page).collect { resource ->
                 when (resource) {
                     is Resource.Loading -> {
@@ -272,7 +273,7 @@ class MovieListViewModel(
     }
 
     private fun fetchTvShowsPage(page: Int, isRefresh: Boolean = false) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.Default) {
             repository.getTvShows(page).collect { resource ->
                 when (resource) {
                     is Resource.Loading -> {

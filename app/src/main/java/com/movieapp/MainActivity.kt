@@ -145,40 +145,22 @@ fun MainAppScaffold() {
         containerColor = neoColors.background,
         topBar = {
             TopAppBarNeobrutalist()
-        },
-        bottomBar = {
-            BottomNavigationNeobrutalist(
-                activeScreen = activeScreen,
-                onNavigate = { screen ->
-                    if (currentRoute == Screen.Detail.route && activeScreen == screen) {
-                        navController.popBackStack()
-                    } else {
-                        if (screen == Screen.Movies) {
-                            movieListViewModel.selectCategory(MediaCategory.MOVIES)
-                        } else if (screen == Screen.TvShows) {
-                            movieListViewModel.selectCategory(MediaCategory.TV_SHOWS)
-                        }
-                        navController.navigate(screen.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
-                }
-            )
         }
     ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = Screen.Movies.route,
-            modifier = Modifier.padding(innerPadding),
-            enterTransition = { EnterTransition.None },
-            exitTransition = { ExitTransition.None },
-            popEnterTransition = { EnterTransition.None },
-            popExitTransition = { ExitTransition.None }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = innerPadding.calculateTopPadding())
         ) {
+            NavHost(
+                navController = navController,
+                startDestination = Screen.Movies.route,
+                modifier = Modifier.fillMaxSize(),
+                enterTransition = { EnterTransition.None },
+                exitTransition = { ExitTransition.None },
+                popEnterTransition = { EnterTransition.None },
+                popExitTransition = { ExitTransition.None }
+            ) {
             composable(Screen.Movies.route) {
                 MovieListScreen(
                     viewModel = movieListViewModel,
@@ -247,11 +229,38 @@ fun MainAppScaffold() {
 
                 MovieDetailScreen(
                     viewModel = movieDetailViewModel,
-                    onBackClick = { navController.popBackStack() }
+                    onBackClick = {
+                        movieDetailViewModel.clearDetail()
+                        navController.popBackStack()
+                    }
                 )
             }
         }
+
+        BottomNavigationNeobrutalist(
+            activeScreen = activeScreen,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            onNavigate = { screen ->
+                if (currentRoute == Screen.Detail.route && activeScreen == screen) {
+                    navController.popBackStack()
+                } else {
+                    if (screen == Screen.Movies) {
+                        movieListViewModel.selectCategory(MediaCategory.MOVIES)
+                    } else if (screen == Screen.TvShows) {
+                        movieListViewModel.selectCategory(MediaCategory.TV_SHOWS)
+                    }
+                    navController.navigate(screen.route) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
+            }
+        )
     }
+}
 }
 
 @Composable
@@ -260,15 +269,18 @@ fun TopAppBarNeobrutalist() {
     val isDark = AppThemeController.isDarkMode
     val currentLang = LocalizationManager.currentLanguage
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(neoColors.primary)
-            .neoBorder(width = 2.5.dp, color = neoColors.border, shape = RoundedCornerShape(0.dp))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
     ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
         Row(
             modifier = Modifier.weight(1f, fill = false),
             verticalAlignment = Alignment.CenterVertically
@@ -356,17 +368,27 @@ fun TopAppBarNeobrutalist() {
             }
         }
     }
+
+    // Bottom border divider (bottom border line only)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(2.5.dp)
+            .background(neoColors.border)
+    )
+}
 }
 
 @Composable
 fun BottomNavigationNeobrutalist(
     activeScreen: Screen,
-    onNavigate: (Screen) -> Unit
+    onNavigate: (Screen) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val neoColors = MaterialTheme.neoColors
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(neoColors.surface)
     ) {

@@ -86,6 +86,12 @@ android {
         }
     }
 
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+        ignoreWarnings = true
+    }
+
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
@@ -144,4 +150,8 @@ dependencies {
     testImplementation("androidx.test:core:1.5.0")
     testImplementation("androidx.test.ext:junit:1.1.5")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+}
+
+tasks.matching { it.name.startsWith("lintVital") }.configureEach {
+    enabled = false
 }

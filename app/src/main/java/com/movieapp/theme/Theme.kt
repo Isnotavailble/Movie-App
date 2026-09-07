@@ -1,5 +1,6 @@
 package com.movieapp.theme
 
+import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -8,10 +9,14 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 /**
  * Global theme controller managing Theme Mode (Light / Dark).
@@ -65,6 +70,21 @@ fun MovieAppTheme(
             surface = neoColors.surface,
             onSurface = neoColors.textPrimary
         )
+    }
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? Activity)?.window
+            if (window != null) {
+                // In light mode white/light tab background, in dark mode dark tab background
+                window.statusBarColor = neoColors.background.toArgb()
+                val insetsController = WindowCompat.getInsetsController(window, view)
+                // In light mode: dark icons (isAppearanceLightStatusBars = true)
+                // In dark mode: light/white icons (isAppearanceLightStatusBars = false)
+                insetsController.isAppearanceLightStatusBars = !darkTheme
+            }
+        }
     }
 
     CompositionLocalProvider(

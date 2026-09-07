@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -43,6 +44,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -93,23 +95,24 @@ fun DownloadsScreen(
         modifier = modifier
             .fillMaxSize()
             .background(neoColors.background)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp)
     ) {
         // Screen Header
         Text(
             text = t("downloads_title"),
             fontFamily = headerFontFamily(),
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Black,
+            fontSize = 18.sp,
+            lineHeight = 24.sp,
+            fontWeight = FontWeight.Bold,
             color = neoColors.textPrimary
         )
         Text(
             text = t("downloads_subtitle"),
             fontFamily = bodyFontFamily(),
-            fontSize = 13.sp,
+            fontSize = 12.sp,
             lineHeight = 18.sp,
             color = neoColors.textSecondary,
-            modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
+            modifier = Modifier.padding(top = 2.dp, bottom = 14.dp)
         )
 
         // Tab Selector (Currently Downloading / History)
@@ -141,7 +144,7 @@ fun DownloadsScreen(
                             } else {
                                 Modifier
                                     .background(bg, RoundedCornerShape(10.dp))
-                                    .neoBorder(width = 1.5.dp, color = neoColors.border, shape = RoundedCornerShape(10.dp))
+                                    .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(10.dp))
                             }
                         )
                         .clickable { selectedTab = index }
@@ -162,7 +165,7 @@ fun DownloadsScreen(
                             fontSize = 13.sp,
                             lineHeight = 18.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = neoColors.textPrimary
+                            color = if (isSelected) neoColors.onPrimary else neoColors.textPrimary
                         )
                         if (count > 0) {
                             Box(
@@ -196,6 +199,7 @@ fun DownloadsScreen(
                 )
             } else {
                 LazyColumn(
+                    contentPadding = PaddingValues(bottom = 88.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
@@ -220,6 +224,7 @@ fun DownloadsScreen(
                 )
             } else {
                 LazyColumn(
+                    contentPadding = PaddingValues(bottom = 88.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
@@ -503,7 +508,7 @@ fun EmptyStateCard(
             .fillMaxWidth()
             .padding(vertical = 24.dp)
             .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(12.dp))
-            .background(neoColors.surfaceMuted, RoundedCornerShape(12.dp))
+            .background(neoColors.surface, RoundedCornerShape(12.dp))
             .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
             .padding(24.dp),
         contentAlignment = Alignment.Center
@@ -513,9 +518,9 @@ fun EmptyStateCard(
                 imageVector = NeubrutalismIcons.Download,
                 contentDescription = null,
                 tint = neoColors.textSecondary,
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier.size(48.dp)
             )
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = title,
                 fontFamily = headerFontFamily(),
@@ -524,13 +529,14 @@ fun EmptyStateCard(
                 fontWeight = FontWeight.Bold,
                 color = neoColors.textPrimary
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = description,
                 fontFamily = bodyFontFamily(),
-                fontSize = 12.sp,
-                lineHeight = 18.sp,
-                color = neoColors.textSecondary
+                fontSize = 13.sp,
+                lineHeight = 20.sp,
+                color = neoColors.textSecondary,
+                textAlign = TextAlign.Center
             )
         }
     }

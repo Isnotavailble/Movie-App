@@ -34,7 +34,7 @@ class MovieApplication : Application(), ImageLoaderFactory {
             }
             .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
             .allowRgb565(true)
-            .crossfade(false)
+            .crossfade(150)
             .respectCacheHeaders(false)
             .build()
     }

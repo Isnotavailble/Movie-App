@@ -77,10 +77,10 @@ fun BookmarkScreen(
     val neoColors = MaterialTheme.neoColors
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val rawBookmarks by dao.getBookmarkedMovies().collectAsStateWithLifecycle(initialValue = emptyList())
+    val rawBookmarks by dao.getBookmarkedMovies().collectAsStateWithLifecycle(initialValue = null)
     var locallyRemovedSlugs by remember { mutableStateOf(setOf<String>()) }
     val bookmarkedMovies = remember(rawBookmarks, locallyRemovedSlugs) {
-        rawBookmarks.filter { it.slug !in locallyRemovedSlugs }
+        rawBookmarks?.filter { it.slug !in locallyRemovedSlugs }
     }
 
     val pullRefreshState = rememberPullToRefreshState()
@@ -100,7 +100,7 @@ fun BookmarkScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp)
         ) {
             // Heading
             Text(
@@ -120,73 +120,80 @@ fun BookmarkScreen(
                 modifier = Modifier.padding(top = 2.dp, bottom = 14.dp)
             )
 
-            if (bookmarkedMovies.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(20.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
+            when {
+                rawBookmarks == null -> {
+                    // Initial Room query in flight (~15ms) - do not show empty state card
+                    Box(modifier = Modifier.fillMaxSize())
+                }
+                bookmarkedMovies.isNullOrEmpty() -> {
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(12.dp))
-                            .background(neoColors.surface, RoundedCornerShape(12.dp))
-                            .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
-                            .padding(24.dp)
+                            .fillMaxSize()
+                            .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 88.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = NeubrutalismIcons.BookmarkBorder,
-                            contentDescription = null,
-                            tint = neoColors.textSecondary,
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = t("bookmarks_empty_title"),
-                            fontFamily = headerFontFamily(),
-                            fontSize = 16.sp,
-                            lineHeight = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = neoColors.textPrimary
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = t("bookmarks_empty_desc"),
-                            fontFamily = bodyFontFamily(),
-                            fontSize = 13.sp,
-                            lineHeight = 20.sp,
-                            color = neoColors.textSecondary,
-                            textAlign = TextAlign.Center
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(12.dp))
+                                .background(neoColors.surface, RoundedCornerShape(12.dp))
+                                .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
+                                .padding(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = NeubrutalismIcons.BookmarkBorder,
+                                contentDescription = null,
+                                tint = neoColors.textSecondary,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = t("bookmarks_empty_title"),
+                                fontFamily = headerFontFamily(),
+                                fontSize = 16.sp,
+                                lineHeight = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = neoColors.textPrimary
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = t("bookmarks_empty_desc"),
+                                fontFamily = bodyFontFamily(),
+                                fontSize = 13.sp,
+                                lineHeight = 20.sp,
+                                color = neoColors.textSecondary,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(bottom = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(
-                        items = bookmarkedMovies,
-                        key = { it.slug },
-                        contentType = { "bookmark_card" }
-                    ) { movie ->
-                        BookmarkMovieCard(
-                            item = movie,
-                            onClick = { onTitleClick(movie.slug, movie.isTvShow) },
-                            onRemoveClick = {
-                                locallyRemovedSlugs = locallyRemovedSlugs + movie.slug
-                                val toastMsg = LocalizationManager.getString("bookmark_removed")
-                                Toast.makeText(context, toastMsg, Toast.LENGTH_SHORT).show()
-                                coroutineScope.launch {
-                                    dao.updateBookmarkStatus(slug = movie.slug, isBookmarked = false, bookmarkedAt = 0L)
+                else -> {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        contentPadding = PaddingValues(bottom = 88.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(
+                            items = bookmarkedMovies,
+                            key = { it.slug },
+                            contentType = { "bookmark_card" }
+                        ) { movie ->
+                            BookmarkMovieCard(
+                                item = movie,
+                                onClick = { onTitleClick(movie.slug, movie.isTvShow) },
+                                onRemoveClick = {
+                                    locallyRemovedSlugs = locallyRemovedSlugs + movie.slug
+                                    val toastMsg = LocalizationManager.getString("bookmark_removed")
+                                    Toast.makeText(context, toastMsg, Toast.LENGTH_SHORT).show()
+                                    coroutineScope.launch {
+                                        dao.updateBookmarkStatus(slug = movie.slug, isBookmarked = false, bookmarkedAt = 0L)
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }

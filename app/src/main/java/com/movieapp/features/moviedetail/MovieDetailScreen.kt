@@ -68,6 +68,7 @@ fun MovieDetailScreen(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    androidx.activity.compose.BackHandler(onBack = onBackClick)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
     val neoColors = MaterialTheme.neoColors
@@ -109,7 +110,7 @@ fun MovieDetailScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp)
         ) {
             // Top Navigation Bar
             Row(
@@ -149,59 +150,34 @@ fun MovieDetailScreen(
                     }
                 }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Bookmark Toggle Button
+                val isBookmarked = uiState.isBookmarked
+                val bookmarkBg = if (isBookmarked) neoColors.primary else neoColors.surface
+                Box(
+                    modifier = Modifier
+                        .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                        .neoShadow(offsetX = 2.dp, offsetY = 2.dp, color = neoColors.shadow, shape = RoundedCornerShape(8.dp))
+                        .background(bookmarkBg, RoundedCornerShape(8.dp))
+                        .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(8.dp))
+                        .clickable {
+                            viewModel.toggleBookmark()
+                            val msgKey = if (!isBookmarked) "bookmark_added" else "bookmark_removed"
+                            val toastMsg = com.movieapp.util.LocalizationManager.getString(msgKey)
+                            android.widget.Toast.makeText(context, toastMsg, android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                        .semantics {
+                            role = Role.Button
+                            selected = isBookmarked
+                        }
+                        .padding(10.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // Bookmark Toggle Button
-                    val isBookmarked = uiState.isBookmarked
-                    val bookmarkBg = if (isBookmarked) neoColors.primary else neoColors.surface
-                    Box(
-                        modifier = Modifier
-                            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                            .neoShadow(offsetX = 2.dp, offsetY = 2.dp, color = neoColors.shadow, shape = RoundedCornerShape(8.dp))
-                            .background(bookmarkBg, RoundedCornerShape(8.dp))
-                            .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(8.dp))
-                            .clickable {
-                                viewModel.toggleBookmark()
-                                val msgKey = if (!isBookmarked) "bookmark_added" else "bookmark_removed"
-                                val toastMsg = com.movieapp.util.LocalizationManager.getString(msgKey)
-                                android.widget.Toast.makeText(context, toastMsg, android.widget.Toast.LENGTH_SHORT).show()
-                            }
-                            .semantics {
-                                role = Role.Button
-                                selected = isBookmarked
-                            }
-                            .padding(10.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (isBookmarked) NeubrutalismIcons.Bookmark else NeubrutalismIcons.BookmarkBorder,
-                            contentDescription = if (isBookmarked) t("remove_bookmark") else t("add_bookmark"),
-                            tint = if (isBookmarked) neoColors.onPrimary else neoColors.textPrimary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-
-                    // Media Type Badge
-                    val badgeText = if (uiState.isTvShow) t("badge_tv_show") else t("badge_movie")
-                    val badgeColor = if (uiState.isTvShow) neoColors.secondary else neoColors.primary
-
-                    Box(
-                        modifier = Modifier
-                            .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(8.dp))
-                            .background(badgeColor, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 10.dp, vertical = 5.dp)
-                    ) {
-                        Text(
-                            text = badgeText,
-                            fontFamily = badgeFontFamily(),
-                            fontSize = 11.sp,
-                            lineHeight = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = neoColors.onPrimary
-                        )
-                    }
+                    Icon(
+                        imageVector = if (isBookmarked) NeubrutalismIcons.Bookmark else NeubrutalismIcons.BookmarkBorder,
+                        contentDescription = if (isBookmarked) t("remove_bookmark") else t("add_bookmark"),
+                        tint = if (isBookmarked) neoColors.onPrimary else neoColors.textPrimary,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
 
@@ -306,68 +282,54 @@ fun MovieDetailScreen(
                             }
                         }
 
-                        Box(
-                            modifier = Modifier
-                                 .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(10.dp))
-                                 .background(neoColors.tertiary, RoundedCornerShape(10.dp))
-                                 .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(10.dp))
-                                 .padding(horizontal = 10.dp, vertical = 6.dp)
+                        Column(
+                            horizontalAlignment = Alignment.End,
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            // Rating Badge
+                            Box(
+                                modifier = Modifier
+                                     .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(10.dp))
+                                     .background(neoColors.tertiary, RoundedCornerShape(10.dp))
+                                     .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(10.dp))
+                                     .padding(horizontal = 10.dp, vertical = 6.dp)
                             ) {
-                                Icon(
-                                    imageVector = NeubrutalismIcons.Star,
-                                    contentDescription = null,
-                                    tint = NeoBlack,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                                Text(
-                                    text = detail.formattedRating,
-                                    fontFamily = badgeFontFamily(),
-                                    fontSize = 12.sp,
-                                    lineHeight = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = NeoBlack
-                                )
-                            }
-                        }
-                    }
-
-                    // Download Button for Movies
-                    if (!uiState.isTvShow) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(10.dp))
-                                .background(neoColors.primary, RoundedCornerShape(10.dp))
-                                .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(10.dp))
-                                .clickable {
-                                    downloadSheetTitle = detail.displayTitle
-                                    currentDownloadLinks = detail.safeMovieDownloadLinks
-                                    showDownloadSheet = true
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = NeubrutalismIcons.Star,
+                                        contentDescription = null,
+                                        tint = NeoBlack,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Text(
+                                        text = detail.formattedRating,
+                                        fontFamily = badgeFontFamily(),
+                                        fontSize = 12.sp,
+                                        lineHeight = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = NeoBlack
+                                    )
                                 }
-                                .padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                            }
+
+                            // Media Type Badge (right below the rating badge)
+                            val badgeText = if (uiState.isTvShow) t("badge_tv_show") else t("badge_movie")
+                            val badgeColor = if (uiState.isTvShow) neoColors.secondary else neoColors.primary
+
+                            Box(
+                                modifier = Modifier
+                                    .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(8.dp))
+                                    .background(badgeColor, RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)
                             ) {
-                                Icon(
-                                    imageVector = NeubrutalismIcons.Download,
-                                    contentDescription = null,
-                                    tint = neoColors.onPrimary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = t("get_download_links", detail.safeMovieDownloadLinks.size),
-                                    fontFamily = buttonFontFamily(),
-                                    fontSize = 14.sp,
-                                    lineHeight = 20.sp,
+                                    text = badgeText,
+                                    fontFamily = badgeFontFamily(),
+                                    fontSize = 11.sp,
+                                    lineHeight = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = neoColors.onPrimary
                                 )
@@ -429,6 +391,46 @@ fun MovieDetailScreen(
                                 lineHeight = 22.sp,
                                 color = neoColors.textSecondary
                             )
+                        }
+                    }
+
+                    // Download Button for Movies (positioned at the bottom, matching TV show action placement)
+                    if (!uiState.isTvShow) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(10.dp))
+                                .background(neoColors.primary, RoundedCornerShape(10.dp))
+                                .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(10.dp))
+                                .clickable {
+                                    downloadSheetTitle = detail.displayTitle
+                                    currentDownloadLinks = detail.safeMovieDownloadLinks
+                                    showDownloadSheet = true
+                                }
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = NeubrutalismIcons.Download,
+                                    contentDescription = null,
+                                    tint = neoColors.onPrimary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = t("get_download_links", detail.safeMovieDownloadLinks.size),
+                                    fontFamily = buttonFontFamily(),
+                                    fontSize = 14.sp,
+                                    lineHeight = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = neoColors.onPrimary
+                                )
+                            }
                         }
                     }
 
@@ -601,7 +603,7 @@ fun MovieDetailScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(88.dp))
                 }
             }
         }

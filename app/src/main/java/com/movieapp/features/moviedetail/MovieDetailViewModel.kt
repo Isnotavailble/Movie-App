@@ -39,21 +39,70 @@ class MovieDetailViewModel(
     private var currentSlug: String = ""
     private var currentIsTv: Boolean = false
 
+    private val detailCache = mutableMapOf<String, MovieDetailDTO>()
+
+    private var detailJob: kotlinx.coroutines.Job? = null
+    private var bookmarkJob: kotlinx.coroutines.Job? = null
+
     /**
      * Loads title details based on slug and media category.
+     * Cancels pending fetch operations and immediately hydrates from memory cache if available,
+     * completely eliminating skeleton loading for already fetched titles.
      */
-    fun loadDetail(slug: String, isTvShow: Boolean) {
+    fun loadDetail(slug: String, isTvShow: Boolean, force: Boolean = false) {
+        val isDifferentTitle = currentSlug != slug || currentIsTv != isTvShow
+
+        if (!isDifferentTitle && !force) {
+            if (detailJob?.isActive == true || (_uiState.value.detail != null && _uiState.value.errorMessage == null)) {
+                return
+            }
+        }
+
         currentSlug = slug
         currentIsTv = isTvShow
-        _uiState.update { it.copy(isTvShow = isTvShow, isLoading = true, errorMessage = null) }
 
-        viewModelScope.launch {
+        detailJob?.cancel()
+        bookmarkJob?.cancel()
+
+        val cachedDetail = detailCache[slug]
+
+        _uiState.update { current ->
+            if (cachedDetail != null) {
+                // Instantly hydrate already fetched title - no skeleton flicker
+                current.copy(
+                    detail = cachedDetail,
+                    isTvShow = isTvShow,
+                    isLoading = false,
+                    errorMessage = null,
+                    isBookmarked = false,
+                    selectedSeasonNumber = cachedDetail.safeSeasons.firstOrNull()?.seasonNumber ?: 1
+                )
+            } else if (isDifferentTitle) {
+                // New title never fetched before: show skeleton while loading
+                current.copy(
+                    detail = null,
+                    isTvShow = isTvShow,
+                    isLoading = true,
+                    errorMessage = null,
+                    isBookmarked = false,
+                    selectedSeasonNumber = 1
+                )
+            } else {
+                current.copy(
+                    isTvShow = isTvShow,
+                    isLoading = true,
+                    errorMessage = null
+                )
+            }
+        }
+
+        bookmarkJob = viewModelScope.launch {
             repository.isBookmarked(slug).collect { bookmarked ->
                 _uiState.update { it.copy(isBookmarked = bookmarked ?: false) }
             }
         }
 
-        viewModelScope.launch {
+        detailJob = viewModelScope.launch {
             val flow = if (isTvShow) {
                 repository.getTvShowDetail(slug)
             } else {
@@ -63,10 +112,16 @@ class MovieDetailViewModel(
             flow.collect { resource ->
                 when (resource) {
                     is Resource.Loading -> {
-                        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+                        // Only show loading indicator if no cached detail is already visible
+                        if (_uiState.value.detail == null) {
+                            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+                        }
                     }
                     is Resource.Success -> {
                         val data = resource.data
+                        if (data != null) {
+                            detailCache[slug] = data
+                        }
                         val firstSeason = data?.safeSeasons?.firstOrNull()?.seasonNumber ?: 1
                         _uiState.update {
                             it.copy(
@@ -81,13 +136,24 @@ class MovieDetailViewModel(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                errorMessage = resource.message
+                                errorMessage = if (it.detail != null) null else resource.message
                             )
                         }
                     }
                 }
             }
         }
+    }
+
+    /**
+     * Clears current detail state and cancels active jobs.
+     */
+    fun clearDetail() {
+        detailJob?.cancel()
+        bookmarkJob?.cancel()
+        currentSlug = ""
+        currentIsTv = false
+        _uiState.update { MovieDetailUiState() }
     }
 
     /**

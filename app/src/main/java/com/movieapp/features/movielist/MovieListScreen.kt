@@ -130,7 +130,7 @@ fun MovieListScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp)
         ) {
             // In-page search bar for Movies or TV Shows
             val searchPlaceholder = if (targetCategory == MediaCategory.MOVIES) {
@@ -210,11 +210,12 @@ fun MovieListScreen(
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     state = gridState,
-                    contentPadding = PaddingValues(bottom = 24.dp),
+                    contentPadding = PaddingValues(bottom = 88.dp),
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.weight(1f)
                 ) {
+                    val isTv = targetCategory == MediaCategory.TV_SHOWS
                     items(
                         items = displayList,
                         key = { item ->
@@ -225,11 +226,8 @@ fun MovieListScreen(
                     ) { item ->
                         MovieGridCard(
                             item = item,
-                            onClick = {
-                                val slug = item.slug ?: item.id.toString()
-                                val isTv = targetCategory == MediaCategory.TV_SHOWS
-                                onTitleClick(slug, isTv)
-                            }
+                            isTv = isTv,
+                            onTitleClick = onTitleClick
                         )
                     }
 
@@ -389,7 +387,8 @@ fun InPageSearchBar(
 @Composable
 private fun MovieGridCard(
     item: MovieDTO,
-    onClick: () -> Unit
+    isTv: Boolean,
+    onTitleClick: (slug: String, isTvShow: Boolean) -> Unit
 ) {
     val neoColors = MaterialTheme.neoColors
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -398,6 +397,7 @@ private fun MovieGridCard(
             .data(item.poster)
             .size(coil.size.Dimension(360), coil.size.Dimension(540))
             .precision(coil.size.Precision.INEXACT)
+            .crossfade(150)
             .build()
     }
     val a11yLabel = "${item.displayTitle}, released in ${item.displayYear}, rating ${item.formattedRating} out of 10"
@@ -408,7 +408,10 @@ private fun MovieGridCard(
             .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(12.dp))
             .background(neoColors.surface, RoundedCornerShape(12.dp))
             .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
+            .clickable {
+                val slug = item.slug ?: item.id.toString()
+                onTitleClick(slug, isTv)
+            }
             .semantics {
                 role = Role.Button
                 contentDescription = a11yLabel
@@ -489,9 +492,9 @@ private fun MovieGridCard(
                     fontSize = 11.sp,
                     color = neoColors.textSecondary
                 )
-                val isTv = item.mediaType?.contains("tv", ignoreCase = true) == true
-                val typeLabel = if (isTv) t("badge_tv_show") else t("badge_movie")
-                val typeBg = if (isTv) neoColors.secondary else neoColors.primary
+                val isItemTv = item.mediaType?.contains("tv", ignoreCase = true) == true
+                val typeLabel = if (isItemTv) t("badge_tv_show") else t("badge_movie")
+                val typeBg = if (isItemTv) neoColors.secondary else neoColors.primary
                 Box(
                     modifier = Modifier
                         .neoBorder(width = 1.5.dp, color = neoColors.border, shape = RoundedCornerShape(4.dp))

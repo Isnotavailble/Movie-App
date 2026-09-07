@@ -2,6 +2,7 @@ package com.movieapp.theme
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DarkMode
@@ -10,7 +11,6 @@ import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Nightlight
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.Tv
@@ -37,7 +37,7 @@ object NeubrutalismIcons {
     val Star: ImageVector get() = Icons.Default.Star
     val Close: ImageVector get() = Icons.Default.Close
     val ArrowLeft: ImageVector get() = Icons.AutoMirrored.Filled.ArrowBack
-    val Telegram: ImageVector get() = Icons.Default.Send
+    val Telegram: ImageVector get() = Icons.AutoMirrored.Filled.Send
     val Copy: ImageVector get() = Icons.Default.ContentCopy
     val Bookmark: ImageVector by lazy {
         ImageVector.Builder(
