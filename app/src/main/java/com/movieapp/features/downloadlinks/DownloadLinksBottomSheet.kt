@@ -269,8 +269,8 @@ fun DownloadLinksBottomSheet(
                                         // App not installed: show dedicated dialog immediately without 18s wait!
                                         fallbackLink = link
                                     }
-                                } else if (link.url?.contains("megaup.net", ignoreCase = true) == true) {
-                                    // MegaUp requires interactive Cloudflare Turnstile human verification
+                                } else if (link.isMegaUp || link.isUsersDrive) {
+                                    // MegaUp & UsersDrive require interactive web flow / captcha resolution
                                     interactiveLink = link
                                 } else {
                                     // In-App Direct Download with Ad/Timer Bypass Sniffer
@@ -477,6 +477,27 @@ fun DownloadLinkCard(
                                 fontSize = 10.sp,
                                 lineHeight = 14.sp,
                                 fontWeight = FontWeight.Medium,
+                                color = neoColors.textSecondary,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
+
+                    // Yoteshin Google Sign-In Badge
+                    if (link.isYoteshin) {
+                        Box(
+                            modifier = Modifier
+                                .neoBorder(width = 1.dp, color = neoColors.border, shape = RoundedCornerShape(6.dp))
+                                .background(neoColors.surfaceMuted, RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = t("yoteshin_login_badge"),
+                                fontFamily = badgeFontFamily(),
+                                fontSize = 10.sp,
+                                lineHeight = 14.sp,
+                                fontWeight = FontWeight.Bold,
                                 color = neoColors.textSecondary,
                                 maxLines = 1,
                                 softWrap = false
