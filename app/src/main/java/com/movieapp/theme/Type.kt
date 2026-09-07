@@ -10,13 +10,12 @@ import androidx.compose.ui.unit.sp
 import com.movieapp.R
 
 /**
- * Neobrutalism Custom Typography System using authentic local fonts:
- * - Hero Title / Big Display: blacktofu_font
- * - Badges / Tags / Retro Accents: typewriter_font
- * - Buttons / Subheadings: cartoon_font (for playful pop)
- * - Body Paragraphs: yoeshin_font Regular
+ * Neobrutalism Custom Typography System:
+ * - Myanmar (MY): Exclusively uses SIL Padauk for all typography (headers, buttons, body, badges)
+ * - Badges / Tags / Retro Accents (EN): typewriter_font
+ * - Buttons / Subheadings (EN): cartoon_font (for playful pop)
+ * - Body Paragraphs (EN): yoeshin_font Regular
  */
-val BlackTofuFontFamily = FontFamily(Font(R.font.blacktofu_font, FontWeight.Black))
 val TypewriterFontFamily = FontFamily(Font(R.font.typewriter_font, FontWeight.Normal))
 val CartoonFontFamily = FontFamily(Font(R.font.cartoon_font, FontWeight.Bold))
 val YoeshinFontFamily = FontFamily(Font(R.font.yoeshin_font, FontWeight.Normal))
@@ -84,7 +83,7 @@ fun badgeFontFamily(): FontFamily {
 }
 
 val Typography = Typography(
-    // Big Hero Display (App Title, Top Banner) - defaults to Cartoon for EN, BlackTofu for MY via headerFontFamily()
+    // Big Hero Display (App Title, Top Banner) - defaults to Cartoon for EN, Padauk for MY via headerFontFamily()
     displayLarge = TextStyle(
         fontFamily = CartoonFontFamily,
         fontWeight = FontWeight.Black,

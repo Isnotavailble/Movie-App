@@ -60,6 +60,20 @@ data class DownloadLinkDTO(
                 (url?.startsWith("yoteshin://", ignoreCase = true) == true)
 
     /**
+     * Checks whether this download link points to MegaUp.
+     */
+    val isMegaUp: Boolean
+        get() = cleanServerName.contains("megaup", ignoreCase = true) ||
+                (url?.contains("megaup.net", ignoreCase = true) == true)
+
+    /**
+     * Checks whether this download link points to UsersDrive.
+     */
+    val isUsersDrive: Boolean
+        get() = cleanServerName.contains("usersdrive", ignoreCase = true) ||
+                (url?.contains("usersdrive.com", ignoreCase = true) == true)
+
+    /**
      * Human-readable label combining server name, resolution, and file size.
      */
     val displayLabel: String

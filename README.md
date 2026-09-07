@@ -47,6 +47,14 @@ This project was built to explore and experiment with modern Android development
 
 ---
 
+## Contributors
+
+| Contributor                                                                                                                                                                 | Contributor                                                                                                                                                     |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <a href="https://github.com/phonewinttun-dev"><img src="https://github.com/phonewinttun-dev.png?size=144" width="72" alt="phonewinttun-dev avatar"><br>phonewinttun-dev</a> | <a href="https://github.com/Isnotavailble"><img src="https://github.com/Isnotavailble.png?size=144" width="72" alt="Isnotavailble avatar"><br>Isnotavailble</a> |
+
+---
+
 ## Spider-Man Neobrutalism Design System
 
 YoteShinZone breaks away from generic flat interfaces through its custom **Spider-Man Neobrutalism Design System** (see [DESIGN.md](DESIGN.md)). The interface balances high-energy action with calm, structured utility.
