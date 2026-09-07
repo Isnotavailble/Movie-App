@@ -12,8 +12,10 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import androidx.core.content.FileProvider
 import com.movieapp.MainActivity
 import com.movieapp.data.local.AppDatabase
 import com.movieapp.data.local.DownloadEntity
@@ -265,11 +267,15 @@ class MovieDownloadService : Service() {
                         fileUri = Uri.fromFile(targetFile).toString()
                     )
 
-                    // Show Completed Notification
-                    notificationManager.notify(
-                        notifId,
-                        buildCompletedNotification(downloadId = downloadId, title = title, targetFile = targetFile)
-                    )
+                    // Show Completed Notification safely without affecting download success status
+                    try {
+                        notificationManager.notify(
+                            notifId,
+                            buildCompletedNotification(downloadId = downloadId, title = title, targetFile = targetFile)
+                        )
+                    } catch (notifEx: Exception) {
+                        Log.e("MovieDownloadService", "Failed to post completed notification", notifEx)
+                    }
                 }
             } catch (e: Exception) {
                 if (tempFile.exists()) tempFile.delete()
@@ -363,15 +369,28 @@ class MovieDownloadService : Service() {
         title: String,
         targetFile: File
     ): android.app.Notification {
-        val playIntent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(Uri.fromFile(targetFile), "video/*")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        val playIntent = try {
+            val contentUri = FileProvider.getUriForFile(
+                this,
+                "${applicationContext.packageName}.provider",
+                targetFile
+            )
+            val extension = targetFile.name.substringAfterLast(".", "mp4")
+            val mimeType = if (extension.equals("mkv", ignoreCase = true)) "video/x-matroska" else "video/mp4"
+            Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(contentUri, mimeType)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        } catch (e: Exception) {
+            Log.e("MovieDownloadService", "Error creating content URI with FileProvider", e)
+            Intent(this, MainActivity::class.java)
         }
+
         val playPendingIntent = PendingIntent.getActivity(
             this,
             (downloadId % Int.MAX_VALUE).toInt(),
             playIntent,
-            PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)

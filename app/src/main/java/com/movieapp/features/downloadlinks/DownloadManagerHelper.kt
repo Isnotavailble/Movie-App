@@ -8,6 +8,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Environment
 import android.widget.Toast
+import androidx.core.content.FileProvider
 import com.movieapp.data.local.AppDatabase
 import com.movieapp.data.local.DownloadEntity
 import com.movieapp.util.LocalizationManager
@@ -333,14 +334,23 @@ object DownloadManagerHelper {
      */
     fun openDownloadedFile(context: Context, download: DownloadEntity) {
         try {
-            val uri = download.fileUri?.let { Uri.parse(it) } ?: run {
-                val file = java.io.File(
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                    download.fileName
-                )
-                if (file.exists()) {
-                    Uri.fromFile(file)
-                } else null
+            val file = java.io.File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                download.fileName
+            )
+
+            val uri: Uri? = if (file.exists()) {
+                try {
+                    FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.provider",
+                        file
+                    )
+                } catch (_: Exception) {
+                    download.fileUri?.let { Uri.parse(it) }
+                }
+            } else {
+                download.fileUri?.let { Uri.parse(it) }
             }
 
             if (uri == null) {
