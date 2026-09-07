@@ -483,6 +483,27 @@ fun DownloadLinkCard(
                             )
                         }
                     }
+
+                    // Yoteshin Google Sign-In Badge
+                    if (link.isYoteshin) {
+                        Box(
+                            modifier = Modifier
+                                .neoBorder(width = 1.dp, color = neoColors.border, shape = RoundedCornerShape(6.dp))
+                                .background(neoColors.surfaceMuted, RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = t("yoteshin_login_badge"),
+                                fontFamily = badgeFontFamily(),
+                                fontSize = 10.sp,
+                                lineHeight = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = neoColors.textSecondary,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
                 }
 
                 // Right: File Size

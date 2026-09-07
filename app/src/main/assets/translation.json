@@ -76,7 +76,15 @@
     "yoteshin_action": "Yoteshin Drive",
     "open_in_yoteshin": "Open in Yoteshin Drive",
     "install_yoteshin_prompt": "Please install Yoteshin Drive to download via this link",
-    "corrupt_html_download_error": "Corrupt HTML download prevented. Please try another server or browser."
+    "corrupt_html_download_error": "Download not successful. Please try downloading from browser.",
+    "yoteshin_signin_title": "Google Account Sign-In Required",
+    "yoteshin_signin_desc": "YoteShin Portal files are stored on Google Drive. When opened in a browser, you must sign in with your Google Account before downloading.",
+    "yoteshin_app_hint": "If you have Yoteshin Drive App installed, you can download directly without browser login.",
+    "yoteshin_open_app": "Open with Yoteshin Drive",
+    "yoteshin_get_app": "Get Yoteshin Drive App",
+    "yoteshin_open_browser_signin": "Open in Browser & Sign In",
+    "yoteshin_login_badge": "Google Sign-In",
+    "open_in_browser_action": "Open in Browser to Download"
   },
   "my": {
     "app_title": "ရုပ်ရှင်ဇုန်",
@@ -155,6 +163,14 @@
     "yoteshin_action": "ရုပ်ရှင်ဒရိုက်ဗ်",
     "open_in_yoteshin": "Yoteshin Drive ဖြင့်ဖွင့်မည်",
     "install_yoteshin_prompt": "ဤလင့်ခ်ဖြင့် ဒေါင်းလုဒ်ဆွဲရန် Yoteshin Drive app ကို သွင်းပေးပါ",
-    "corrupt_html_download_error": "ဗီဒီယိုဖိုင် အစစ်မဟုတ်ဘဲ HTML သာဖြစ်နေ၍ ဖျက်သိမ်းလိုက်ပါသည်။ အခြား server သို့မဟုတ် browser ဖြင့် ဒေါင်းလုဒ်ဆွဲပေးပါ။"
+    "corrupt_html_download_error": "ဗီဒီယိုဖိုင် ဒေါင်းလုဒ်ဆွဲတာ မအောင်မြင်ပါ။ Browser ဖြင့် ဒေါင်းလုဒ်ဆွဲပေးပါ။",
+    "yoteshin_signin_title": "Google Account ဖြင့် Sign-In ဝင်ရန် လိုအပ်ပါသည်",
+    "yoteshin_signin_desc": "YoteShin Portal သည် ရုပ်ရှင်များကို Google Drive ပေါ်တွင် သိမ်းဆည်းထားသောကြောင့် Browser တွင် ဖွင့်ပါက မိမိ၏ Google Account ဖြင့် Sign-In ဝင်ပြီးမှသာ ဒေါင်းလုဒ်ဆွဲနိုင်မည် ဖြစ်ပါသည်။",
+    "yoteshin_app_hint": "ဖုန်းထဲတွင် Yoteshin Drive App ရှိပါက Sign-In မလိုဘဲ App ဖြင့် တိုက်ရိုက်ဒေါင်းလုဒ်ဆွဲနိုင်ပါသည်။",
+    "yoteshin_open_app": "Yoteshin Drive App ဖြင့် ဖွင့်မည်",
+    "yoteshin_get_app": "Yoteshin Drive App ရယူမည်",
+    "yoteshin_open_browser_signin": "Browser တွင်ဖွင့်၍ Google Login ဝင်မည်",
+    "yoteshin_login_badge": "Google Login လိုအပ်",
+    "open_in_browser_action": "ဒေါင်းလုဒ်ဆွဲရန် Browser တွင် ဖွင့်မည်"
   }
 }

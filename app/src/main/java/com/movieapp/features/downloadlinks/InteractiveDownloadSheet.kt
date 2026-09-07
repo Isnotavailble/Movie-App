@@ -3,6 +3,7 @@ package com.movieapp.features.downloadlinks
 import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.Looper
+import android.view.MotionEvent
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.DownloadListener
@@ -276,6 +277,22 @@ fun InteractiveDownloadSheet(
                             try {
                                 cookieManager.setAcceptThirdPartyCookies(this, true)
                             } catch (_: Exception) {}
+
+                            isNestedScrollingEnabled = false
+                            isVerticalScrollBarEnabled = true
+                            isHorizontalScrollBarEnabled = false
+
+                            setOnTouchListener { view, motionEvent ->
+                                when (motionEvent.actionMasked) {
+                                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+                                        view.parent?.requestDisallowInterceptTouchEvent(true)
+                                    }
+                                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                                        view.parent?.requestDisallowInterceptTouchEvent(false)
+                                    }
+                                }
+                                false
+                            }
 
                             settings.apply {
                                 javaScriptEnabled = true
