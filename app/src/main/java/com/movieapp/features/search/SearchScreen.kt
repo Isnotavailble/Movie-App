@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,9 +20,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,16 +48,18 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.movieapp.features.movielist.MovieDTO
-import com.movieapp.theme.NeoBlack
 import com.movieapp.theme.NeoButton
-import com.movieapp.theme.NeoCyan
-import com.movieapp.theme.NeoErrorBackground
-import com.movieapp.theme.NeoPink
-import com.movieapp.theme.NeoWhite
-import com.movieapp.theme.NeoYellow
+import com.movieapp.theme.NeubrutalismIcons
+import com.movieapp.theme.badgeFontFamily
+import com.movieapp.theme.bodyFontFamily
+import com.movieapp.theme.buttonFontFamily
+import com.movieapp.theme.headerFontFamily
 import com.movieapp.theme.neoBorder
+import com.movieapp.theme.neoColors
 import com.movieapp.theme.neoShadow
+import com.movieapp.util.t
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     viewModel: SearchViewModel,
@@ -59,18 +67,38 @@ fun SearchScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val neoColors = MaterialTheme.neoColors
 
-    Column(
+    val pullRefreshState = rememberPullToRefreshState()
+    if (pullRefreshState.isRefreshing) {
+        androidx.compose.runtime.LaunchedEffect(true) {
+            viewModel.retry()
+        }
+    }
+
+    androidx.compose.runtime.LaunchedEffect(uiState.isLoading) {
+        if (!uiState.isLoading) {
+            pullRefreshState.endRefresh()
+        }
+    }
+
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .nestedScroll(pullRefreshState.nestedScrollConnection)
     ) {
-        Text(
-            text = "Look for a movie or show",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Black,
-            color = NeoBlack
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = t("search_heading"),
+                fontFamily = headerFontFamily(),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Black,
+                color = neoColors.textPrimary
+            )
 
         Spacer(modifier = Modifier.height(6.dp))
 
@@ -78,17 +106,17 @@ fun SearchScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .neoShadow(offsetX = 4.dp, offsetY = 4.dp, shape = RoundedCornerShape(12.dp))
-                .background(NeoWhite, RoundedCornerShape(12.dp))
-                .neoBorder(shape = RoundedCornerShape(12.dp))
+                .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(12.dp))
+                .background(neoColors.surface, RoundedCornerShape(12.dp))
+                .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Heroicon Search Leading Icon
-            androidx.compose.material3.Icon(
-                imageVector = com.movieapp.theme.Heroicons.Search,
+            // Neubrutalism Search Leading Icon
+            Icon(
+                imageVector = NeubrutalismIcons.Search,
                 contentDescription = null,
-                tint = NeoBlack,
+                tint = neoColors.textPrimary,
                 modifier = Modifier.size(18.dp)
             )
 
@@ -98,25 +126,34 @@ fun SearchScreen(
                 value = uiState.query,
                 onValueChange = { viewModel.onQueryChange(it) },
                 textStyle = TextStyle(
+                    fontFamily = bodyFontFamily(),
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = NeoBlack
+                    lineHeight = 20.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = neoColors.textPrimary
                 ),
-                cursorBrush = SolidColor(NeoBlack),
+                cursorBrush = SolidColor(neoColors.textPrimary),
                 singleLine = true,
                 modifier = Modifier
                     .weight(1f)
                     .semantics { contentDescription = "Search text input field" },
                 decorationBox = { innerTextField ->
-                    if (uiState.query.isEmpty()) {
-                        Text(
-                            text = "Type a title or topic...",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF888888)
-                        )
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (uiState.query.isEmpty()) {
+                            Text(
+                                text = t("search_placeholder"),
+                                fontFamily = bodyFontFamily(),
+                                fontSize = 14.sp,
+                                lineHeight = 20.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = neoColors.textSecondary
+                            )
+                        }
+                        innerTextField()
                     }
-                    innerTextField()
                 }
             )
 
@@ -125,7 +162,7 @@ fun SearchScreen(
                 Box(
                     modifier = Modifier
                         .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                        .background(NeoBlack, RoundedCornerShape(8.dp))
+                        .background(neoColors.border, RoundedCornerShape(8.dp))
                         .clickable { viewModel.clearQuery() }
                         .semantics {
                             role = Role.Button
@@ -138,17 +175,19 @@ fun SearchScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        androidx.compose.material3.Icon(
-                            imageVector = com.movieapp.theme.Heroicons.Clear,
+                        Icon(
+                            imageVector = NeubrutalismIcons.Close,
                             contentDescription = null,
-                            tint = NeoWhite,
+                            tint = neoColors.surface,
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
-                            text = "Clear",
-                            color = NeoWhite,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 11.sp
+                            text = t("search_clear"),
+                            color = neoColors.surface,
+                            fontFamily = buttonFontFamily(),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp
                         )
                     }
                 }
@@ -157,10 +196,12 @@ fun SearchScreen(
 
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = "Results update automatically as you type.",
+            text = t("search_note"),
+            fontFamily = bodyFontFamily(),
             fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF666666)
+            lineHeight = 16.sp,
+            fontWeight = FontWeight.Normal,
+            color = neoColors.textSecondary
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -168,64 +209,72 @@ fun SearchScreen(
         // Content Area: Loading, Initial Prompt, Empty State, Error, or Results
         when {
             uiState.isLoading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
+                LazyColumn(
+                    contentPadding = PaddingValues(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
-                    CircularProgressIndicator(color = NeoBlack, strokeWidth = 3.dp)
+                    items(4) {
+                        com.movieapp.theme.SearchResultCardSkeleton()
+                    }
                 }
             }
             uiState.errorMessage != null -> {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .neoShadow(offsetX = 3.dp, offsetY = 3.dp)
-                        .background(NeoErrorBackground, RoundedCornerShape(12.dp))
-                        .neoBorder(shape = RoundedCornerShape(12.dp))
+                        .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow)
+                        .background(neoColors.errorBackground, RoundedCornerShape(12.dp))
+                        .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
                         .padding(16.dp)
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = uiState.errorMessage ?: "",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = NeoBlack
+                            fontFamily = bodyFontFamily(),
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = neoColors.textPrimary
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
                         NeoButton(
                             onClick = { viewModel.retry() },
-                            text = "Try Again",
-                            backgroundColor = NeoYellow
+                            text = t("try_again"),
+                            backgroundColor = neoColors.primary,
+                            contentColor = neoColors.textPrimary
                         )
                     }
                 }
             }
             uiState.isEmptyResult -> {
-                // Empty State with polite guidance (US-05)
+                // Empty State with guidance (US-05)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .neoShadow(offsetX = 4.dp, offsetY = 4.dp, shape = RoundedCornerShape(12.dp))
-                        .background(Color(0xFFFFF0F2), RoundedCornerShape(12.dp))
-                        .neoBorder(shape = RoundedCornerShape(12.dp))
+                        .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(12.dp))
+                        .background(neoColors.surfaceMuted, RoundedCornerShape(12.dp))
+                        .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
                         .padding(20.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "No Matches Found",
-                            fontWeight = FontWeight.Black,
-                            fontSize = 14.sp,
-                            color = NeoBlack
+                            text = t("search_empty_title"),
+                            fontFamily = headerFontFamily(),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            lineHeight = 22.sp,
+                            color = neoColors.textPrimary
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "We could not find any titles matching your search. Check your spelling or search for another title.",
+                            text = t("search_empty_desc"),
+                            fontFamily = bodyFontFamily(),
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFF444444)
+                            lineHeight = 18.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = neoColors.textSecondary
                         )
                     }
                 }
@@ -234,25 +283,29 @@ fun SearchScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .neoShadow(offsetX = 3.dp, offsetY = 3.dp, shape = RoundedCornerShape(12.dp))
-                        .background(Color(0xFFF2EFE9), RoundedCornerShape(12.dp))
-                        .neoBorder(shape = RoundedCornerShape(12.dp))
+                        .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(12.dp))
+                        .background(neoColors.surfaceMuted, RoundedCornerShape(12.dp))
+                        .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
                         .padding(20.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "Search by Title",
-                            fontWeight = FontWeight.Black,
-                            fontSize = 14.sp,
-                            color = NeoBlack
+                            text = t("search_prompt_title"),
+                            fontFamily = headerFontFamily(),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            lineHeight = 22.sp,
+                            color = neoColors.textPrimary
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Type in the box above to find movies or television series.",
+                            text = t("search_prompt_desc"),
+                            fontFamily = bodyFontFamily(),
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFF666666)
+                            lineHeight = 18.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = neoColors.textSecondary
                         )
                     }
                 }
@@ -266,7 +319,8 @@ fun SearchScreen(
                 ) {
                     items(
                         items = uiState.results,
-                        key = { "${it.id}_${it.slug}_${it.displayTitle}" }
+                        key = { "${it.id}_${it.slug}_${it.displayTitle}" },
+                        contentType = { "search_card" }
                     ) { item ->
                         SearchResultCard(
                             item = item,
@@ -281,6 +335,14 @@ fun SearchScreen(
             }
         }
     }
+
+    PullToRefreshContainer(
+        state = pullRefreshState,
+        modifier = Modifier.align(Alignment.TopCenter),
+        containerColor = neoColors.primary,
+        contentColor = neoColors.textPrimary
+    )
+}
 }
 
 /**
@@ -291,14 +353,23 @@ private fun SearchResultCard(
     item: MovieDTO,
     onClick: () -> Unit
 ) {
+    val neoColors = MaterialTheme.neoColors
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val imageRequest = remember(item.poster) {
+        coil.request.ImageRequest.Builder(context)
+            .data(item.poster)
+            .size(coil.size.Dimension(120), coil.size.Dimension(170))
+            .precision(coil.size.Precision.INEXACT)
+            .build()
+    }
     val a11yLabel = "${item.displayTitle}, released in ${item.displayYear}, rating ${item.formattedRating}"
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .neoShadow(offsetX = 3.dp, offsetY = 3.dp, shape = RoundedCornerShape(12.dp))
-            .background(NeoWhite, RoundedCornerShape(12.dp))
-            .neoBorder(shape = RoundedCornerShape(12.dp))
+            .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(12.dp))
+            .background(neoColors.surface, RoundedCornerShape(12.dp))
+            .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .padding(10.dp)
             .semantics {
@@ -311,13 +382,13 @@ private fun SearchResultCard(
         Box(
             modifier = Modifier
                 .size(width = 54.dp, height = 76.dp)
-                .neoBorder(width = 1.5.dp, shape = RoundedCornerShape(8.dp))
+                .neoBorder(width = 1.5.dp, color = neoColors.border, shape = RoundedCornerShape(8.dp))
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFFE0E0E0))
+                .background(neoColors.surfaceMuted)
         ) {
             AsyncImage(
-                model = item.poster,
-                contentDescription = null,
+                model = imageRequest,
+                contentDescription = "${item.displayTitle} thumbnail",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
@@ -329,18 +400,22 @@ private fun SearchResultCard(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = item.displayTitle,
-                fontWeight = FontWeight.Black,
-                fontSize = 13.sp,
+                fontFamily = headerFontFamily(),
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                color = NeoBlack
+                color = neoColors.textPrimary
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = "${item.displayYear} • Rating ${item.formattedRating}",
+                fontFamily = badgeFontFamily(),
                 fontSize = 11.sp,
+                lineHeight = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF666666)
+                color = neoColors.textSecondary
             )
         }
 
@@ -348,20 +423,23 @@ private fun SearchResultCard(
 
         // Badge [Movie] or [TV Show]
         val isTv = item.mediaType?.contains("tv", ignoreCase = true) == true
-        val badgeText = if (isTv) "TV Show" else "Movie"
-        val badgeColor = if (isTv) NeoPink else NeoCyan
+        val badgeText = if (isTv) t("badge_tv_show") else t("badge_movie")
+        val badgeColor = if (isTv) neoColors.secondary else neoColors.tertiary
 
         Box(
             modifier = Modifier
-                .neoBorder(width = 1.5.dp, shape = RoundedCornerShape(6.dp))
+                .neoBorder(width = 1.5.dp, color = neoColors.border, shape = RoundedCornerShape(6.dp))
                 .background(badgeColor, RoundedCornerShape(6.dp))
-                .padding(horizontal = 6.dp, vertical = 3.dp)
+                .padding(horizontal = 6.dp, vertical = 2.5.dp)
         ) {
             Text(
                 text = badgeText,
-                fontWeight = FontWeight.Black,
-                fontSize = 10.sp,
-                color = NeoBlack
+                fontFamily = badgeFontFamily(),
+                fontWeight = FontWeight.Bold,
+                fontSize = 10.5.sp,
+                lineHeight = 15.sp,
+                letterSpacing = 0.sp,
+                color = neoColors.textPrimary
             )
         }
     }

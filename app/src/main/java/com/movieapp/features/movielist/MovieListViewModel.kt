@@ -2,10 +2,17 @@ package com.movieapp.features.movielist
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.movieapp.features.search.SearchRepository
 import com.movieapp.util.Resource
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -31,32 +38,130 @@ data class MovieListUiState(
     val moviesPage: Int = 1,
     val tvShowsPage: Int = 1,
     val moviesHasMore: Boolean = true,
-    val tvShowsHasMore: Boolean = true
+    val tvShowsHasMore: Boolean = true,
+    val moviesSearchQuery: String = "",
+    val tvShowsSearchQuery: String = "",
+    val moviesSearchResults: List<MovieDTO> = emptyList(),
+    val tvShowsSearchResults: List<MovieDTO> = emptyList(),
+    val isSearching: Boolean = false
 ) {
+    val currentSearchQuery: String
+        get() = if (activeCategory == MediaCategory.MOVIES) moviesSearchQuery else tvShowsSearchQuery
+
+    val isSearchActive: Boolean
+        get() = currentSearchQuery.isNotBlank()
+
     val currentDisplayList: List<MovieDTO>
-        get() = if (activeCategory == MediaCategory.MOVIES) movies else tvShows
+        get() = if (isSearchActive) {
+            if (activeCategory == MediaCategory.MOVIES) moviesSearchResults else tvShowsSearchResults
+        } else {
+            if (activeCategory == MediaCategory.MOVIES) movies else tvShows
+        }
 
     val currentHasMore: Boolean
-        get() = if (activeCategory == MediaCategory.MOVIES) moviesHasMore else tvShowsHasMore
+        get() = if (isSearchActive) {
+            false
+        } else {
+            if (activeCategory == MediaCategory.MOVIES) moviesHasMore else tvShowsHasMore
+        }
+
+    val isSearchEmpty: Boolean
+        get() = isSearchActive && !isSearching && currentDisplayList.isEmpty()
 }
 
 /**
- * State holder managing catalog feeds, tab switches, and continuous pagination.
+ * State holder managing catalog feeds, infinite scrolling, category selection, and in-page search.
  */
+@OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class MovieListViewModel(
-    private val repository: MovieListRepository = MovieListRepository()
+    private val repository: MovieListRepository = MovieListRepository(),
+    private val searchRepository: SearchRepository = SearchRepository(),
+    private val searchDebounceMillis: Long = 300L
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MovieListUiState())
     val uiState: StateFlow<MovieListUiState> = _uiState.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+
     init {
         loadInitialFeeds()
+        setupSearch()
     }
 
     private fun loadInitialFeeds() {
         fetchMoviesPage(1)
         fetchTvShowsPage(1)
+    }
+
+    private fun setupSearch() {
+        viewModelScope.launch {
+            _searchQuery
+                .debounce(searchDebounceMillis)
+                .distinctUntilChanged()
+                .flatMapLatest { query ->
+                    val cleanQuery = query.trim()
+                    if (cleanQuery.isBlank()) {
+                        _uiState.update { current ->
+                            if (current.activeCategory == MediaCategory.MOVIES) {
+                                current.copy(moviesSearchResults = emptyList(), isSearching = false)
+                            } else {
+                                current.copy(tvShowsSearchResults = emptyList(), isSearching = false)
+                            }
+                        }
+                        flowOf(null)
+                    } else {
+                        searchRepository.searchTitles(cleanQuery, page = 1)
+                    }
+                }
+                .collect { resource ->
+                    if (resource == null) return@collect
+                    when (resource) {
+                        is Resource.Loading -> {
+                            _uiState.update { it.copy(isSearching = true) }
+                        }
+                        is Resource.Success -> {
+                            val allResults = resource.data?.safeItems ?: emptyList()
+                            val category = _uiState.value.activeCategory
+                            val filtered = allResults.filter { item ->
+                                if (category == MediaCategory.MOVIES) !item.isTvShow else item.isTvShow
+                            }
+                            _uiState.update { current ->
+                                if (category == MediaCategory.MOVIES) {
+                                    current.copy(moviesSearchResults = filtered, isSearching = false)
+                                } else {
+                                    current.copy(tvShowsSearchResults = filtered, isSearching = false)
+                                }
+                            }
+                        }
+                        is Resource.Error -> {
+                            _uiState.update { it.copy(isSearching = false) }
+                        }
+                    }
+                }
+        }
+    }
+
+    /**
+     * Updates in-page search query for the active category.
+     */
+    fun onSearchQueryChange(newQuery: String) {
+        val category = _uiState.value.activeCategory
+        _uiState.update { current ->
+            if (category == MediaCategory.MOVIES) {
+                current.copy(moviesSearchQuery = newQuery)
+            } else {
+                current.copy(tvShowsSearchQuery = newQuery)
+            }
+        }
+        _searchQuery.value = newQuery
+    }
+
+    /**
+     * Clears in-page search query for the active category.
+     */
+    fun clearSearchQuery() {
+        onSearchQueryChange("")
     }
 
     /**
@@ -79,15 +184,21 @@ class MovieListViewModel(
     fun selectCategory(category: MediaCategory) {
         if (_uiState.value.activeCategory != category) {
             _uiState.update { it.copy(activeCategory = category, errorMessage = null) }
+            val currentCategoryQuery = if (category == MediaCategory.MOVIES) {
+                _uiState.value.moviesSearchQuery
+            } else {
+                _uiState.value.tvShowsSearchQuery
+            }
+            _searchQuery.value = currentCategoryQuery
         }
     }
 
     /**
-     * Loads the next page of items for the currently active category.
+     * Loads the next page of items for continuous infinite scrolling.
      */
     fun loadNextPage() {
         val state = _uiState.value
-        if (state.isInitialLoading || state.isPaginating || !state.currentHasMore) return
+        if (state.isInitialLoading || state.isPaginating || !state.currentHasMore || state.isSearchActive) return
 
         if (state.activeCategory == MediaCategory.MOVIES) {
             fetchMoviesPage(state.moviesPage + 1)
@@ -122,6 +233,7 @@ class MovieListViewModel(
                     is Resource.Success -> {
                         val response = resource.data
                         val newItems = response?.safeItems ?: emptyList()
+                        val hasMore = if (newItems.isEmpty()) false else (response?.canLoadMore ?: true)
                         _uiState.update { current ->
                             val combined = if (page == 1 || isRefresh) {
                                 newItems
@@ -131,7 +243,7 @@ class MovieListViewModel(
                             current.copy(
                                 movies = combined,
                                 moviesPage = page,
-                                moviesHasMore = response?.canLoadMore ?: (newItems.isNotEmpty()),
+                                moviesHasMore = hasMore,
                                 isInitialLoading = false,
                                 isPaginating = false,
                                 isRefreshing = false,
@@ -168,6 +280,7 @@ class MovieListViewModel(
                     is Resource.Success -> {
                         val response = resource.data
                         val newItems = response?.safeItems ?: emptyList()
+                        val hasMore = if (newItems.isEmpty()) false else (response?.canLoadMore ?: true)
                         _uiState.update { current ->
                             val combined = if (page == 1 || isRefresh) {
                                 newItems
@@ -177,7 +290,7 @@ class MovieListViewModel(
                             current.copy(
                                 tvShows = combined,
                                 tvShowsPage = page,
-                                tvShowsHasMore = response?.canLoadMore ?: (newItems.isNotEmpty()),
+                                tvShowsHasMore = hasMore,
                                 isInitialLoading = false,
                                 isPaginating = false,
                                 isRefreshing = false,

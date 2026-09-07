@@ -40,12 +40,21 @@ fun Modifier.neoShadow(
 ): Modifier = this.drawBehind {
     val xPx = offsetX.toPx()
     val yPx = offsetY.toPx()
-    drawRoundRect(
-        color = color,
-        topLeft = androidx.compose.ui.geometry.Offset(xPx, yPx),
-        size = size,
-        cornerRadius = androidx.compose.ui.geometry.CornerRadius(12.dp.toPx(), 12.dp.toPx())
-    )
+    if (shape is RoundedCornerShape) {
+        val cornerRadius = shape.topStart.toPx(size, this)
+        drawRoundRect(
+            color = color,
+            topLeft = androidx.compose.ui.geometry.Offset(xPx, yPx),
+            size = size,
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius, cornerRadius)
+        )
+    } else {
+        drawRect(
+            color = color,
+            topLeft = androidx.compose.ui.geometry.Offset(xPx, yPx),
+            size = size
+        )
+    }
 }
 
 /**
@@ -64,8 +73,8 @@ fun Modifier.neoBorder(
 fun NeoButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    backgroundColor: Color = NeoYellow,
-    contentColor: Color = NeoBlack,
+    backgroundColor: Color = SpideyRed,
+    contentColor: Color = WebWhite,
     text: String,
     enabled: Boolean = true,
     shape: Shape = RoundedCornerShape(12.dp)
@@ -97,8 +106,10 @@ fun NeoButton(
         Text(
             text = text,
             color = contentColor,
-            fontWeight = FontWeight.Black,
+            fontFamily = buttonFontFamily(),
+            fontWeight = FontWeight.Bold,
             fontSize = 13.sp,
+            lineHeight = 18.sp,
             letterSpacing = 0.5.sp
         )
     }

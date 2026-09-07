@@ -37,9 +37,11 @@ data class MovieListResponseDTO(
     val totalPages: Int
         get() = meta?.lastPage ?: rawTotalPages ?: 1
 
-    /**
-     * Determines whether additional pages are available to paginate.
-     */
     val canLoadMore: Boolean
-        get() = hasMore ?: (currentPage < totalPages)
+        get() = when {
+            hasMore != null -> hasMore
+            meta != null -> meta.currentPage < meta.lastPage
+            rawTotalPages != null -> currentPage < rawTotalPages
+            else -> safeItems.isNotEmpty()
+        }
 }

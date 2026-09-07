@@ -27,13 +27,7 @@ class MovieListRepository(
             emit(Resource.Success(response))
         } catch (e: Exception) {
             android.util.Log.e("MovieListRepository", "Failed to fetch movies: ${e.javaClass.simpleName}: ${e.message}", e)
-            val detail = e.localizedMessage?.takeIf { it.isNotBlank() }
-            val message = if (detail != null) {
-                "Unable to load movies ($detail). Please check your connection and try again."
-            } else {
-                "Unable to load movies right now. Please check your internet connection and try again."
-            }
-            emit(Resource.Error(message))
+            emit(Resource.Error("Couldn't load movies. Check your connection and try again."))
         }
     }.flowOn(ioDispatcher)
 
@@ -46,7 +40,8 @@ class MovieListRepository(
             val response = apiService.getTvShows(page)
             emit(Resource.Success(response))
         } catch (e: Exception) {
-            emit(Resource.Error("Unable to load TV shows right now. Please check your internet connection and try again."))
+            android.util.Log.e("MovieListRepository", "Failed to fetch TV shows: ${e.javaClass.simpleName}: ${e.message}", e)
+            emit(Resource.Error("Couldn't load TV shows. Check your connection and try again."))
         }
     }.flowOn(ioDispatcher)
 }

@@ -26,7 +26,8 @@ class SearchRepository(
             val response = apiService.searchTitles(keyword, page)
             emit(Resource.Success(response))
         } catch (e: Exception) {
-            emit(Resource.Error("Search could not be completed right now. Please check your connection and try again."))
+            android.util.Log.e("SearchRepository", "Failed to search titles: ${e.javaClass.simpleName}: ${e.message}", e)
+            emit(Resource.Error("Couldn't complete search. Check your connection and try again."))
         }
     }.flowOn(ioDispatcher)
 }

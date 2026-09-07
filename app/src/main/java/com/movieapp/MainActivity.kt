@@ -1,24 +1,35 @@
 package com.movieapp
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import com.movieapp.features.movielist.MediaCategory
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
@@ -42,17 +53,25 @@ import com.movieapp.features.movielist.MovieListViewModel
 import com.movieapp.features.search.SearchScreen
 import com.movieapp.features.search.SearchViewModel
 import com.movieapp.navigation.Screen
+import com.movieapp.theme.AppThemeController
 import com.movieapp.theme.MovieAppTheme
-import com.movieapp.theme.NeoBackground
-import com.movieapp.theme.NeoBlack
-import com.movieapp.theme.NeoWhite
-import com.movieapp.theme.NeoYellow
+import com.movieapp.theme.NeubrutalismIcons
+import com.movieapp.theme.bodyFontFamily
+import com.movieapp.theme.buttonFontFamily
+import com.movieapp.theme.headerFontFamily
 import com.movieapp.theme.neoBorder
+import com.movieapp.theme.neoColors
 import com.movieapp.theme.neoShadow
+import com.movieapp.util.AppLanguage
+import com.movieapp.util.LocalizationManager
+import com.movieapp.util.t
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.decorView.isForceDarkAllowed = false
+        }
         setContent {
             MovieAppTheme {
                 MainAppScaffold()
@@ -66,28 +85,23 @@ fun MainAppScaffold() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val neoColors = MaterialTheme.neoColors
 
     val movieListViewModel: MovieListViewModel = viewModel()
     val searchViewModel: SearchViewModel = viewModel()
     val movieDetailViewModel: MovieDetailViewModel = viewModel()
 
     Scaffold(
-        containerColor = NeoBackground,
+        containerColor = neoColors.background,
         topBar = {
-            TopAppBarNeobrutalist(
-                onSearchClick = {
-                    if (currentRoute != Screen.Search.route) {
-                        navController.navigate(Screen.Search.route)
-                    }
-                }
-            )
+            TopAppBarNeobrutalist()
         },
         bottomBar = {
             BottomNavigationNeobrutalist(
                 currentRoute = currentRoute,
                 onNavigate = { screen ->
                     navController.navigate(screen.route) {
-                        popUpTo(Screen.Feed.route) { saveState = true }
+                        popUpTo(Screen.Movies.route) { saveState = true }
                         launchSingleTop = true
                         restoreState = true
                     }
@@ -97,10 +111,13 @@ fun MainAppScaffold() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Feed.route,
+            startDestination = Screen.Movies.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(Screen.Feed.route) {
+            composable(Screen.Movies.route) {
+                LaunchedEffect(Unit) {
+                    movieListViewModel.selectCategory(MediaCategory.MOVIES)
+                }
                 MovieListScreen(
                     viewModel = movieListViewModel,
                     onTitleClick = { slug, isTv ->
@@ -108,6 +125,32 @@ fun MainAppScaffold() {
                         navController.navigate(Screen.Detail.createRoute(slug, isTv))
                     }
                 )
+            }
+
+            composable(Screen.TvShows.route) {
+                LaunchedEffect(Unit) {
+                    movieListViewModel.selectCategory(MediaCategory.TV_SHOWS)
+                }
+                MovieListScreen(
+                    viewModel = movieListViewModel,
+                    onTitleClick = { slug, isTv ->
+                        movieDetailViewModel.loadDetail(slug, isTv)
+                        navController.navigate(Screen.Detail.createRoute(slug, isTv))
+                    }
+                )
+            }
+
+            composable(Screen.Bookmarks.route) {
+                com.movieapp.features.bookmarks.BookmarkScreen(
+                    onTitleClick = { slug, isTv ->
+                        movieDetailViewModel.loadDetail(slug, isTv)
+                        navController.navigate(Screen.Detail.createRoute(slug, isTv))
+                    }
+                )
+            }
+
+            composable(Screen.Downloads.route) {
+                com.movieapp.features.downloads.DownloadsScreen()
             }
 
             composable(Screen.Search.route) {
@@ -149,62 +192,103 @@ fun MainAppScaffold() {
 }
 
 @Composable
-fun TopAppBarNeobrutalist(
-    onSearchClick: () -> Unit
-) {
+fun TopAppBarNeobrutalist() {
+    val neoColors = MaterialTheme.neoColors
+    val isDark = AppThemeController.isDarkMode
+    val currentLang = LocalizationManager.currentLanguage
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(NeoYellow)
-            .neoBorder(shape = RoundedCornerShape(0.dp))
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .background(neoColors.primary)
+            .neoBorder(width = 2.5.dp, color = neoColors.border, shape = RoundedCornerShape(0.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
-            Text(
-                text = "Movie Catalog",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Black,
-                color = NeoBlack
+        Row(
+            modifier = Modifier.weight(1f, fill = false),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.yoteshinzone_logo),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(34.dp)
+                    .background(Color.White, RoundedCornerShape(8.dp))
+                    .neoBorder(width = 1.5.dp, color = neoColors.border, shape = RoundedCornerShape(8.dp))
+                    .padding(3.dp)
             )
-            Text(
-                text = "Find what to watch",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = NeoBlack
-            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+                Text(
+                    text = t("app_title"),
+                    fontFamily = headerFontFamily(),
+                    fontSize = 19.sp,
+                    lineHeight = 26.sp,
+                    fontWeight = FontWeight.Black,
+                    color = neoColors.onPrimary
+                )
+                Spacer(modifier = Modifier.height(1.dp))
+                Text(
+                    text = t("app_subtitle"),
+                    fontFamily = bodyFontFamily(),
+                    fontSize = 11.5.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = neoColors.onPrimary
+                )
+            }
         }
 
-        Box(
-            modifier = Modifier
-                .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                .neoShadow(offsetX = 2.dp, offsetY = 2.dp, shape = RoundedCornerShape(8.dp))
-                .background(NeoWhite, RoundedCornerShape(8.dp))
-                .neoBorder(width = 2.dp, shape = RoundedCornerShape(8.dp))
-                .clickable(onClick = onSearchClick)
-                .semantics {
-                    role = Role.Button
-                    selected = false
-                }
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            contentAlignment = Alignment.Center
+        // Quick Controls: Theme & Language Toggles (Vector Icons Only)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            // Theme Mode Toggle (Light / Dark)
+            Box(
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 38.dp, minHeight = 38.dp)
+                    .neoShadow(offsetX = 2.dp, offsetY = 2.dp, color = neoColors.shadow, shape = RoundedCornerShape(8.dp))
+                    .background(neoColors.surface, RoundedCornerShape(8.dp))
+                    .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(8.dp))
+                    .clickable { AppThemeController.toggleDarkMode() }
+                    .semantics {
+                        role = Role.Button
+                        selected = isDark
+                    }
+                    .padding(8.dp),
+                contentAlignment = Alignment.Center
             ) {
-                androidx.compose.material3.Icon(
-                    imageVector = com.movieapp.theme.Heroicons.Search,
-                    contentDescription = null,
-                    tint = NeoBlack,
-                    modifier = Modifier.size(15.dp)
+                Icon(
+                    imageVector = if (isDark) NeubrutalismIcons.LightMode else NeubrutalismIcons.DarkMode,
+                    contentDescription = if (isDark) t("theme_light") else t("theme_dark"),
+                    tint = neoColors.textPrimary,
+                    modifier = Modifier.size(18.dp)
                 )
-                Text(
-                    text = "Search",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Black,
-                    color = NeoBlack
+            }
+
+            // Language Toggle (Icon Only)
+            Box(
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 38.dp, minHeight = 38.dp)
+                    .neoShadow(offsetX = 2.dp, offsetY = 2.dp, color = neoColors.shadow, shape = RoundedCornerShape(8.dp))
+                    .background(neoColors.surface, RoundedCornerShape(8.dp))
+                    .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(8.dp))
+                    .clickable { LocalizationManager.toggleLanguage() }
+                    .semantics {
+                        role = Role.Button
+                        selected = currentLang == AppLanguage.MY
+                    }
+                    .padding(8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = NeubrutalismIcons.Language,
+                    contentDescription = if (currentLang == AppLanguage.EN) t("lang_my") else t("lang_en"),
+                    tint = neoColors.textPrimary,
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
@@ -216,56 +300,70 @@ fun BottomNavigationNeobrutalist(
     currentRoute: String?,
     onNavigate: (Screen) -> Unit
 ) {
+    val neoColors = MaterialTheme.neoColors
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(NeoWhite)
-            .neoBorder(shape = RoundedCornerShape(0.dp))
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .background(neoColors.surface)
+            .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(0.dp))
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceAround,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         val items = listOf(
-            Screen.Feed to "Browse",
-            Screen.Search to "Search"
+            Triple(Screen.Movies, t("nav_movies"), NeubrutalismIcons.Movie),
+            Triple(Screen.TvShows, t("nav_tv_shows"), NeubrutalismIcons.Tv),
+            Triple(Screen.Bookmarks, t("nav_bookmarks"), NeubrutalismIcons.Bookmark),
+            Triple(Screen.Downloads, t("nav_download"), NeubrutalismIcons.Download)
         )
 
-        items.forEach { (screen, label) ->
+        items.forEach { (screen, label, icon) ->
             val isSelected = currentRoute == screen.route
-            val bg = if (isSelected) NeoYellow else NeoWhite
-            val shadowOffset = if (isSelected) 3.dp else 0.dp
+            val activeColor = neoColors.primary
+            val inactiveColor = neoColors.textSecondary
 
-            Box(
+            Column(
                 modifier = Modifier
                     .weight(1f)
-                    .defaultMinSize(minHeight = 48.dp)
-                    .then(
-                        if (isSelected) {
-                            Modifier
-                                .neoShadow(offsetX = shadowOffset, offsetY = shadowOffset, shape = RoundedCornerShape(10.dp))
-                                .background(bg, RoundedCornerShape(10.dp))
-                                .neoBorder(shape = RoundedCornerShape(10.dp))
-                        } else {
-                            Modifier
-                                .background(bg, RoundedCornerShape(10.dp))
-                                .neoBorder(width = 1.5.dp, shape = RoundedCornerShape(10.dp))
-                        }
-                    )
+                    .defaultMinSize(minHeight = 52.dp)
                     .clickable { onNavigate(screen) }
                     .semantics {
                         role = Role.Tab
                         selected = isSelected
                     }
-                    .padding(vertical = 10.dp),
-                contentAlignment = Alignment.Center
+                    .padding(vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
+                val contentColor = if (isSelected) activeColor else inactiveColor
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = contentColor,
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(modifier = Modifier.height(3.dp))
                 Text(
                     text = label,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Black,
-                    color = NeoBlack
+                    fontFamily = buttonFontFamily(),
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp,
+                    fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium,
+                    color = contentColor,
+                    maxLines = 1
                 )
+                if (isSelected) {
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(width = 16.dp, height = 3.dp)
+                            .background(activeColor, RoundedCornerShape(2.dp))
+                    )
+                } else {
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
             }
         }
     }
 }
-

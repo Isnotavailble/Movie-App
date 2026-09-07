@@ -14,6 +14,8 @@ import com.movieapp.features.moviedetail.MovieDetailViewModel
 import com.movieapp.features.moviedetail.SeasonDTO
 import com.movieapp.network.MovieApiService
 import com.movieapp.theme.MovieAppTheme
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -38,24 +40,24 @@ class DetailE2ETest {
         slug = "stranger-things",
         releaseYear = "2016",
         runtime = "50 min",
-        rating = 8.7,
+        rawRating = 8.7,
         plot = "A young boy vanishes, a secret government lab unleashes something terrifying, and a strange girl with powers appears.",
-        genres = listOf("Drama", "Fantasy", "Horror"),
+        rawGenres = listOf("Drama", "Fantasy", "Horror"),
         mediaType = "tv",
         seasons = listOf(
             SeasonDTO(
-                seasonNumber = 1,
+                rawSeasonNumber = 1,
                 name = "Season 1",
                 episodes = listOf(
-                    EpisodeDTO(episodeNumber = 1, title = "Chapter One: The Vanishing of Will Byers", runtime = "49 min"),
-                    EpisodeDTO(episodeNumber = 2, title = "Chapter Two: The Weirdo on Maple Street", runtime = "56 min")
+                    EpisodeDTO(rawEpisodeNumber = 1, title = "Chapter One: The Vanishing of Will Byers", runtime = "49 min"),
+                    EpisodeDTO(rawEpisodeNumber = 2, title = "Chapter Two: The Weirdo on Maple Street", runtime = "56 min")
                 )
             ),
             SeasonDTO(
-                seasonNumber = 2,
+                rawSeasonNumber = 2,
                 name = "Season 2",
                 episodes = listOf(
-                    EpisodeDTO(episodeNumber = 1, title = "Chapter One: MADMAX", runtime = "48 min")
+                    EpisodeDTO(rawEpisodeNumber = 1, title = "Chapter One: MADMAX", runtime = "48 min")
                 )
             )
         )
@@ -71,6 +73,33 @@ class DetailE2ETest {
 
     private val testDispatcher = kotlinx.coroutines.test.UnconfinedTestDispatcher()
     private val repository = MovieDetailRepository(fakeApiService, testDispatcher)
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @org.junit.Before
+    fun setup() {
+        kotlinx.coroutines.Dispatchers.setMain(testDispatcher)
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        val testImageLoader = coil.ImageLoader.Builder(context)
+            .components {
+                add(object : coil.intercept.Interceptor {
+                    override suspend fun intercept(chain: coil.intercept.Interceptor.Chain): coil.request.ImageResult {
+                        return coil.request.SuccessResult(
+                            drawable = android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT),
+                            request = chain.request,
+                            dataSource = coil.decode.DataSource.MEMORY
+                        )
+                    }
+                })
+            }
+            .build()
+        coil.Coil.setImageLoader(testImageLoader)
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @org.junit.After
+    fun teardown() {
+        kotlinx.coroutines.Dispatchers.resetMain()
+    }
 
     @Test
     fun detailDisplaysTitleMetadataAndSwitchesSeasons() {
@@ -88,6 +117,9 @@ class DetailE2ETest {
             }
         }
 
+        composeTestRule.waitUntil(timeoutMillis = 5000) {
+            viewModel.uiState.value.detail != null
+        }
         composeTestRule.waitForIdle()
 
         // Verify Title and Metadata
@@ -98,14 +130,14 @@ class DetailE2ETest {
 
         // Verify Season 1 Episodes are displayed initially
         composeTestRule.onNodeWithText("Choose Season and Episode").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("Chapter One: The Vanishing of Will Byers").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Chapter One: The Vanishing of Will Byers", substring = true).performScrollTo().assertIsDisplayed()
 
         // Switch to Season 2
         composeTestRule.onNodeWithText("Season 2", useUnmergedTree = true).performClick()
         composeTestRule.waitForIdle()
 
         // Verify Season 2 Episode is displayed
-        composeTestRule.onNodeWithText("Chapter One: MADMAX").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Chapter One: MADMAX", substring = true).performScrollTo().assertIsDisplayed()
 
         // Click Back to List
         composeTestRule.onNodeWithText("Back to List").assertIsDisplayed().performClick()

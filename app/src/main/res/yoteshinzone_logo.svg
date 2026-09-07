@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 784 1168"
+     width="784" height="1168"
+     role="img" aria-labelledby="title desc">
+  <title id="title">Yoteshinzone logo</title>
+  <desc id="desc">A geometric red and blue Y-shaped logo with a black outline and offset black shadow.</desc>
+
+  <!-- Transparent background -->
+  <g stroke="#000000" stroke-linejoin="miter" stroke-linecap="square">
+    <!-- Black outline / extrusion silhouette -->
+    <polygon points="141,218 141,384 161,415 322,622 296,655 296,795 264,925 286,926 282,947 497,947 497,631 669,408 669,261 653,260 653,235 550,235 437,366 437,422 401,464 367,424 367,372 352,354 352,346 284,265" fill="#000000"/>
+
+    <!-- Red section -->
+    <polygon points="150,231 150,380 335,619 305,657 305,784 383,706 383,636 438,572 372,497 394,469 343,409 343,349 277,272"
+             fill="#ff171d"
+             stroke="#000000"
+             stroke-width="10"/>
+
+    <!-- Blue section -->
+    <polygon points="644,244 554,244 446,368 446,424 385,498 451,574 392,640 392,711 304,798 275,916 473,916 473,603 644,381"
+             fill="#1464ff"
+             stroke="#000000"
+             stroke-width="10"/>
+  </g>
+</svg>

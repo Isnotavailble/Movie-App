@@ -32,8 +32,8 @@ class SearchE2ETest {
     val composeTestRule = createComposeRule()
 
     private val fakeSearchResults = listOf(
-        MovieDTO(id = 10L, title = "Batman Begins", slug = "batman-begins", releaseYear = "2005", rating = 8.2, mediaType = "movie"),
-        MovieDTO(id = 11L, title = "The Batman", slug = "the-batman", releaseYear = "2022", rating = 7.9, mediaType = "movie")
+        MovieDTO(rawId = 10L, title = "Batman Begins", slug = "batman-begins", releaseYear = "2005", rawRating = 8.2, mediaType = "movie"),
+        MovieDTO(rawId = 11L, title = "The Batman", slug = "the-batman", releaseYear = "2022", rawRating = 7.9, mediaType = "movie")
     )
 
     private val fakeApiService = object : MovieApiService {
@@ -43,9 +43,9 @@ class SearchE2ETest {
         override suspend fun getTvShowDetail(slug: String) = throw UnsupportedOperationException()
         override suspend fun searchTitles(keyword: String, page: Int): SearchResponseDTO {
             return if (keyword.contains("batman", ignoreCase = true)) {
-                SearchResponseDTO(items = fakeSearchResults, currentPage = 1, totalPages = 1)
+                SearchResponseDTO(items = fakeSearchResults, rawCurrentPage = 1, rawTotalPages = 1)
             } else {
-                SearchResponseDTO(items = emptyList(), currentPage = 1, totalPages = 1)
+                SearchResponseDTO(items = emptyList(), rawCurrentPage = 1, rawTotalPages = 1)
             }
         }
     }

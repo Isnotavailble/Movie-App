@@ -77,7 +77,7 @@ data class MovieDTO(
      * Identifies if this entry is a TV show.
      */
     val isTvShow: Boolean
-        get() = mediaType?.equals("tv-show", ignoreCase = true) == true
+        get() = mediaType?.contains("tv", ignoreCase = true) == true
 
     val categoryNames: List<String>
         get() = categories?.map { it.name }?.filter { it.isNotBlank() } ?: emptyList()
