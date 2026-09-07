@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Nightlight
@@ -36,6 +37,7 @@ object NeubrutalismIcons {
     val Download: ImageVector get() = Icons.Default.Download
     val Star: ImageVector get() = Icons.Default.Star
     val Close: ImageVector get() = Icons.Default.Close
+    val Info: ImageVector get() = Icons.Default.Info
     val ArrowLeft: ImageVector get() = Icons.AutoMirrored.Filled.ArrowBack
     val Telegram: ImageVector get() = Icons.AutoMirrored.Filled.Send
     val Copy: ImageVector get() = Icons.Default.ContentCopy

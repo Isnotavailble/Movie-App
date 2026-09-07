@@ -25,11 +25,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import okhttp3.Call
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.CancellationException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
@@ -42,6 +45,7 @@ class MovieDownloadService : Service() {
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val activeJobs = ConcurrentHashMap<Long, Job>()
+    private val activeCalls = ConcurrentHashMap<Long, Call>()
 
     private val okHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
@@ -149,6 +153,7 @@ class MovieDownloadService : Service() {
             if (!downloadsDir.exists()) downloadsDir.mkdirs()
             val targetFile = File(downloadsDir, fileName)
             val tempFile = File(downloadsDir, "$fileName.tmp")
+            var call: Call? = null
 
             try {
                 // Initialize/persist Room database record
@@ -171,7 +176,10 @@ class MovieDownloadService : Service() {
                 referer?.takeIf { it.isNotBlank() }?.let { requestBuilder.header("Referer", it) }
 
                 val request = requestBuilder.build()
-                okHttpClient.newCall(request).execute().use { response ->
+                val activeCall = okHttpClient.newCall(request)
+                call = activeCall
+                activeCalls[downloadId] = activeCall
+                activeCall.execute().use { response ->
                     if (!response.isSuccessful) {
                         throw IllegalStateException("HTTP ${response.code}: ${response.message}")
                     }
@@ -206,6 +214,9 @@ class MovieDownloadService : Service() {
                             var lastUpdateMs = System.currentTimeMillis()
 
                             while (input.read(buffer).also { bytesRead = it } != -1) {
+                                if (!coroutineContext.isActive) {
+                                    break
+                                }
                                 output.write(buffer, 0, bytesRead)
                                 downloadedBytes += bytesRead
 
@@ -240,6 +251,11 @@ class MovieDownloadService : Service() {
                                 }
                             }
                         }
+                    }
+
+                    if (!coroutineContext.isActive) {
+                        if (tempFile.exists()) tempFile.delete()
+                        return@launch
                     }
 
                     // Move temp file to final video file
@@ -279,22 +295,33 @@ class MovieDownloadService : Service() {
                 }
             } catch (e: Exception) {
                 if (tempFile.exists()) tempFile.delete()
-                downloadDao.updateProgress(
-                    id = downloadId,
-                    downloadedBytes = 0L,
-                    totalBytes = 0L,
-                    status = STATUS_FAILED,
-                    completedAt = null,
-                    fileUri = null
-                )
-                notificationManager.notify(
-                    notifId,
-                    buildFailedNotification(title = title, errorMessage = e.localizedMessage ?: "Download failed")
-                )
+                val isCancelled = e is CancellationException ||
+                    e is java.io.InterruptedIOException ||
+                    call?.isCanceled() == true ||
+                    !coroutineContext.isActive
+
+                if (isCancelled) {
+                    notificationManager.cancel(notifId)
+                } else {
+                    downloadDao.updateProgress(
+                        id = downloadId,
+                        downloadedBytes = 0L,
+                        totalBytes = 0L,
+                        status = STATUS_FAILED,
+                        completedAt = null,
+                        fileUri = null
+                    )
+                    notificationManager.notify(
+                        notifId,
+                        buildFailedNotification(title = title, errorMessage = e.localizedMessage ?: "Download failed")
+                    )
+                }
             } finally {
+                activeCalls.remove(downloadId)
                 activeJobs.remove(downloadId)
                 if (activeJobs.isEmpty()) {
-                    stopForeground(STOP_FOREGROUND_DETACH)
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
                 }
             }
         }
@@ -303,6 +330,11 @@ class MovieDownloadService : Service() {
     }
 
     private fun cancelDownloadTask(downloadId: Long) {
+        val call = activeCalls.remove(downloadId)
+        try {
+            call?.cancel()
+        } catch (_: Exception) {}
+
         val job = activeJobs.remove(downloadId)
         job?.cancel()
 

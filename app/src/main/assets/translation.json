@@ -84,7 +84,13 @@
     "yoteshin_get_app": "Get Yoteshin Drive App",
     "yoteshin_open_browser_signin": "Open in Browser & Sign In",
     "yoteshin_login_badge": "Google Sign-In",
-    "open_in_browser_action": "Open in Browser to Download"
+    "open_in_browser_action": "Open in Browser to Download",
+    "cloudflare_verify_title": "Verifying link automatically...",
+    "usersdrive_verify_title": "Verifying link & preparing download...",
+    "cloudflare_verify_desc": "If a challenge appears, tap it to proceed. Otherwise, download starts automatically.",
+    "cancel_other_options": "Cancel & Choose Other Options",
+    "back_to_links": "Back to Links",
+    "resolving_automated": "Bypassing verification & preparing download..."
   },
   "my": {
     "app_title": "ရုပ်ရှင်ဇုန်",
@@ -171,6 +177,12 @@
     "yoteshin_get_app": "Yoteshin Drive App ရယူမည်",
     "yoteshin_open_browser_signin": "Browser တွင်ဖွင့်၍ Google Login ဝင်မည်",
     "yoteshin_login_badge": "Google Login လိုအပ်",
-    "open_in_browser_action": "ဒေါင်းလုဒ်ဆွဲရန် Browser တွင် ဖွင့်မည်"
+    "open_in_browser_action": "ဒေါင်းလုဒ်ဆွဲရန် Browser တွင် ဖွင့်မည်",
+    "cloudflare_verify_title": "လင့်ခ်ကို အလိုအလျောက် စစ်ဆေးနေပါသည်...",
+    "usersdrive_verify_title": "လင့်ခ်စစ်ဆေးပြီး ဒေါင်းလုဒ်ပြင်ဆင်နေပါသည်...",
+    "cloudflare_verify_desc": "ပုံရွေးချယ်မှု ပေါ်လာပါက နှိပ်ပေးပါ။ သို့မဟုတ်ပါက အလိုအလျောက် စတင်ဒေါင်းလုဒ်ဆွဲပါမည်။",
+    "cancel_other_options": "အခြားနည်းလမ်းများဖြင့် ဒေါင်းလုဒ်ရယူမည်",
+    "back_to_links": "လင့်ခ်များစာရင်းသို့ ပြန်သွားမည်",
+    "resolving_automated": "လင့်ခ်စစ်ဆေးမှုကျော်လွှားပြီး ဒေါင်းလုဒ်ပြင်ဆင်နေပါသည်..."
   }
 }

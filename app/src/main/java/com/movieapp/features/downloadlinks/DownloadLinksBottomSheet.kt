@@ -9,11 +9,15 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.size
@@ -35,6 +39,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,6 +58,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.movieapp.theme.NeoBlack
 import com.movieapp.theme.NeubrutalismIcons
+import com.movieapp.theme.TelegramBlue
+import com.movieapp.theme.WebWhite
 import com.movieapp.theme.badgeFontFamily
 import com.movieapp.theme.bodyFontFamily
 import com.movieapp.theme.buttonFontFamily
@@ -95,6 +102,14 @@ fun DownloadLinksBottomSheet(
     var interactiveLink by remember { mutableStateOf<DownloadLinkDTO?>(null) }
     var fallbackLink by remember { mutableStateOf<DownloadLinkDTO?>(null) }
 
+    LaunchedEffect(interactiveLink) {
+        if (interactiveLink != null) {
+            try {
+                sheetState.expand()
+            } catch (_: Exception) {}
+        }
+    }
+
     ModalBottomSheet(
         onDismissRequest = {
             resolvingJob?.cancel()
@@ -105,18 +120,43 @@ fun DownloadLinksBottomSheet(
             onDismiss()
         },
         sheetState = sheetState,
-        containerColor = neoColors.surface
+        containerColor = neoColors.background
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .fillMaxHeight(0.75f)
                 .padding(horizontal = 20.dp, vertical = 8.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            if (interactiveLink != null) {
+                InteractiveDownloadContent(
+                    link = interactiveLink!!,
+                    title = title,
+                    onBack = { interactiveLink = null },
+                    onStreamResolved = { sniffResult ->
+                        val targetLink = interactiveLink
+                        interactiveLink = null
+                        DownloadManagerHelper.startMovieDownloadService(
+                            context = context,
+                            title = title,
+                            directUrl = sniffResult.directUrl,
+                            cookies = sniffResult.cookies,
+                            userAgent = sniffResult.userAgent,
+                            referer = sniffResult.referer ?: targetLink?.url
+                        )
+                    },
+                    onDismissWithFallback = {
+                        val targetLink = interactiveLink
+                        interactiveLink = null
+                        fallbackLink = targetLink
+                    }
+                )
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = t("download_links"),
@@ -322,29 +362,7 @@ fun DownloadLinksBottomSheet(
             }
         }
     }
-
-    // Interactive Cloudflare Turnstile human verification sheet
-    interactiveLink?.let { targetLink ->
-        InteractiveDownloadSheet(
-            link = targetLink,
-            title = title,
-            onStreamResolved = { sniffResult ->
-                interactiveLink = null
-                DownloadManagerHelper.startMovieDownloadService(
-                    context = context,
-                    title = title,
-                    directUrl = sniffResult.directUrl,
-                    cookies = sniffResult.cookies,
-                    userAgent = sniffResult.userAgent,
-                    referer = sniffResult.referer ?: targetLink.url
-                )
-            },
-            onDismissWithFallback = {
-                interactiveLink = null
-                fallbackLink = targetLink
-            }
-        )
-    }
+}
 
     // 2-choice Fallback Dialog (Open in Browser or Copy Link for 1DM/ADM)
     fallbackLink?.let { targetLink ->
@@ -386,6 +404,7 @@ fun DownloadLinksBottomSheet(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DownloadLinkCard(
     link: DownloadLinkDTO,
@@ -409,21 +428,21 @@ fun DownloadLinkCard(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // --- TOP ROW: Badges & File Size ---
+            // --- TOP ROW: Badges & File Size with FlowRow ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
-                // Left: Badges (Server, Resolution, Quality)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                // Left: FlowRow Badges (Server, Resolution, Quality, Google Sign-In)
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.weight(1f, fill = false)
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
-                    // Server Badge
-                    val serverBg = if (link.isTelegram) neoColors.tertiary else if (link.isYoteshin) neoColors.secondary else neoColors.primary.copy(alpha = 0.2f)
-                    val serverTextColor = if (link.isYoteshin) neoColors.onSecondary else neoColors.textPrimary
+                    // Server Badge (Telegram uses TelegramBlue with white text)
+                    val serverBg = if (link.isTelegram) TelegramBlue else if (link.isYoteshin) neoColors.secondary else neoColors.primary.copy(alpha = 0.2f)
+                    val serverTextColor = if (link.isTelegram) WebWhite else if (link.isYoteshin) neoColors.onSecondary else neoColors.textPrimary
                     Box(
                         modifier = Modifier
                             .neoBorder(width = 1.dp, color = neoColors.border, shape = RoundedCornerShape(6.dp))
@@ -508,6 +527,7 @@ fun DownloadLinkCard(
 
                 // Right: File Size
                 link.size?.takeIf { it.isNotBlank() }?.let { sizeStr ->
+                    Spacer(modifier = Modifier.width(6.dp))
                     Box(
                         modifier = Modifier
                             .neoBorder(width = 1.dp, color = neoColors.border, shape = RoundedCornerShape(6.dp))
@@ -582,9 +602,10 @@ fun DownloadLinkCard(
                     )
                 }
 
-                // Main CTA Button (Direct Download, Telegram, or Yoteshin) or Resolving + Cancel State
-                val btnBg = if (link.isTelegram) neoColors.tertiary else if (link.isYoteshin) neoColors.secondary else neoColors.primary
-                val btnContent = if (link.isTelegram) NeoBlack else if (link.isYoteshin) neoColors.onSecondary else neoColors.onPrimary
+                // Main CTA Button (Direct Download, Telegram, or Yoteshin)
+                // Telegram uses TelegramBlue with white text
+                val btnBg = if (link.isTelegram) TelegramBlue else if (link.isYoteshin) neoColors.secondary else neoColors.primary
+                val btnContent = if (link.isTelegram) WebWhite else if (link.isYoteshin) neoColors.onSecondary else neoColors.onPrimary
 
                 if (isResolving) {
                     // Resolving progress container + prominent CANCEL button

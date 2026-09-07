@@ -286,18 +286,6 @@ fun ActiveDownloadCard(
                         color = neoColors.textSecondary
                     )
                 }
-
-                IconButton(
-                    onClick = onCancel,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = NeubrutalismIcons.Close,
-                        contentDescription = t("delete_download"),
-                        tint = neoColors.error,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))

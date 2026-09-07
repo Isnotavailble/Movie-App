@@ -13,6 +13,10 @@ val WebGoldDark = Color(0xFFFBBF24)
 val WebBlack = Color(0xFF000000)
 val WebWhite = Color(0xFFFFFFFF)
 
+// Official Telegram Branding Accents
+val TelegramBlue = Color(0xFF24A1DE)
+val TelegramBlueDark = Color(0xFF1E88E5)
+
 // Classic Neobrutalism Base Accents (Mapped to Spidey Theme)
 val NeoYellow = WebGold
 val NeoCyan = SpideyBlue
