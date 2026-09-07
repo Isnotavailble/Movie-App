@@ -269,8 +269,8 @@ fun DownloadLinksBottomSheet(
                                         // App not installed: show dedicated dialog immediately without 18s wait!
                                         fallbackLink = link
                                     }
-                                } else if (link.url?.contains("megaup.net", ignoreCase = true) == true) {
-                                    // MegaUp requires interactive Cloudflare Turnstile human verification
+                                } else if (link.isMegaUp || link.isUsersDrive) {
+                                    // MegaUp & UsersDrive require interactive web flow / captcha resolution
                                     interactiveLink = link
                                 } else {
                                     // In-App Direct Download with Ad/Timer Bypass Sniffer

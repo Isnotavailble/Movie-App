@@ -214,8 +214,13 @@ fun InteractiveDownloadSheet(
                     .padding(10.dp)
             ) {
                 Column {
+                    val instructionTitle = if (link.isUsersDrive) {
+                        "UsersDrive: စစ်ဆေးမှု (သို့မဟုတ်) Download ခလုတ် ပေါ်လာပါက နှိပ်ပေးပါ။"
+                    } else {
+                        "Cloudflare စစ်ဆေးမှု (I am human) ပေါ်လာပါက နှိပ်ပေးပါ။"
+                    }
                     Text(
-                        text = "Cloudflare စစ်ဆေးမှု (I am human) ပေါ်လာပါက နှိပ်ပေးပါ။",
+                        text = instructionTitle,
                         fontFamily = bodyFontFamily(),
                         fontSize = 12.5.sp,
                         lineHeight = 18.sp,
@@ -289,7 +294,9 @@ fun InteractiveDownloadSheet(
                                 val isPortalOrChallenge = downloadUrl.equals(link.url, ignoreCase = true) ||
                                         cleanUrl.contains("download.megaup.net") ||
                                         (cleanUrl.contains("megaup.net") && !cleanUrl.matches(Regex("""^https?://(?:s\d+|storage)\.megaup\.net/.*"""))) ||
-                                        (cleanUrl.contains("megaup.net") && (mimetype?.contains("text/html") == true || (contentLength in 1..500_000)))
+                                        ((cleanUrl.contains("://usersdrive.com/") || cleanUrl.contains("://www.usersdrive.com/")) && !cleanUrl.contains("/d/") && !cleanUrl.contains("/files/")) ||
+                                        (cleanUrl.contains("megaup.net") && (mimetype?.contains("text/html") == true || (contentLength in 1..500_000))) ||
+                                        (cleanUrl.contains("usersdrive.com") && (mimetype?.contains("text/html") == true || (contentLength in 1..500_000)))
 
                                 if (isPortalOrChallenge) {
                                     loadUrl(downloadUrl)
@@ -307,7 +314,13 @@ fun InteractiveDownloadSheet(
                                 if (isAuthenticMedia) {
                                     if (isResolved.compareAndSet(false, true)) {
                                         val pageCookies = try { link.url?.let { cookieManager.getCookie(it) } } catch (_: Exception) { null }
-                                        val rootCookies = try { cookieManager.getCookie("https://megaup.net") } catch (_: Exception) { null }
+                                        val rootCookies = try {
+                                            if (cleanUrl.contains("usersdrive.com")) {
+                                                cookieManager.getCookie("https://usersdrive.com")
+                                            } else {
+                                                cookieManager.getCookie("https://megaup.net")
+                                            }
+                                        } catch (_: Exception) { null }
                                         val dlHostCookies = try { cookieManager.getCookie("https://download.megaup.net") } catch (_: Exception) { null }
                                         val dlCookies = try { cookieManager.getCookie(downloadUrl) } catch (_: Exception) { null }
                                         val mergedCookies = listOfNotNull(pageCookies, rootCookies, dlHostCookies, dlCookies)
@@ -347,6 +360,9 @@ fun InteractiveDownloadSheet(
                                                     display();
                                                     if (typeof countdownTimer !== 'undefined') clearInterval(countdownTimer);
                                                 }
+                                                if (typeof countdown !== 'undefined') countdown = 0;
+                                                if (typeof count !== 'undefined') count = 0;
+                                                if (typeof c !== 'undefined') c = 0;
                                             })();
                                         """.trimIndent()
                                         view?.evaluateJavascript(fastTimerSkip, null)
@@ -361,17 +377,25 @@ fun InteractiveDownloadSheet(
                                     val cleanUrl = reqUrl.lowercase()
 
                                     // Let initial landing page and Turnstile challenge pages load inside the WebView
-                                    if (reqUrl.equals(link.url, ignoreCase = true) ||
-                                        cleanUrl.contains("download.megaup.net") ||
-                                        (cleanUrl.contains("megaup.net") && !cleanUrl.matches(Regex("""^https?://(?:s\d+|storage)\.megaup\.net/.*""")))
-                                    ) {
+                                    val isPortalOrChallenge = reqUrl.equals(link.url, ignoreCase = true) ||
+                                            cleanUrl.contains("download.megaup.net") ||
+                                            (cleanUrl.contains("megaup.net") && !cleanUrl.matches(Regex("""^https?://(?:s\d+|storage)\.megaup\.net/.*"""))) ||
+                                            ((cleanUrl.contains("://usersdrive.com/") || cleanUrl.contains("://www.usersdrive.com/")) && !cleanUrl.contains("/d/") && !cleanUrl.contains("/files/"))
+
+                                    if (isPortalOrChallenge) {
                                         return false
                                     }
 
                                     if (WebViewDownloadSniffer.isMediaStream(reqUrl, null)) {
                                         if (isResolved.compareAndSet(false, true)) {
                                             val pageCookies = try { link.url?.let { cookieManager.getCookie(it) } } catch (_: Exception) { null }
-                                            val rootCookies = try { cookieManager.getCookie("https://megaup.net") } catch (_: Exception) { null }
+                                            val rootCookies = try {
+                                                if (cleanUrl.contains("usersdrive.com")) {
+                                                    cookieManager.getCookie("https://usersdrive.com")
+                                                } else {
+                                                    cookieManager.getCookie("https://megaup.net")
+                                                }
+                                            } catch (_: Exception) { null }
                                             val dlHostCookies = try { cookieManager.getCookie("https://download.megaup.net") } catch (_: Exception) { null }
                                             val dlCookies = try { cookieManager.getCookie(reqUrl) } catch (_: Exception) { null }
                                             val mergedCookies = listOfNotNull(pageCookies, rootCookies, dlHostCookies, dlCookies)
@@ -400,18 +424,26 @@ fun InteractiveDownloadSheet(
                                     val cleanUrl = reqUrl.lowercase()
 
                                     // Never intercept the landing page or challenge frames
-                                    if (reqUrl.equals(link.url, ignoreCase = true) ||
-                                        cleanUrl.contains("download.megaup.net") ||
-                                        cleanUrl.contains("challenges.cloudflare.com") ||
-                                        (cleanUrl.contains("megaup.net") && !cleanUrl.matches(Regex("""^https?://(?:s\d+|storage)\.megaup\.net/.*""")))
-                                    ) {
+                                    val isPortalOrChallenge = reqUrl.equals(link.url, ignoreCase = true) ||
+                                            cleanUrl.contains("download.megaup.net") ||
+                                            cleanUrl.contains("challenges.cloudflare.com") ||
+                                            (cleanUrl.contains("megaup.net") && !cleanUrl.matches(Regex("""^https?://(?:s\d+|storage)\.megaup\.net/.*"""))) ||
+                                            ((cleanUrl.contains("://usersdrive.com/") || cleanUrl.contains("://www.usersdrive.com/")) && !cleanUrl.contains("/d/") && !cleanUrl.contains("/files/"))
+
+                                    if (isPortalOrChallenge) {
                                         return null
                                     }
 
                                     if (WebViewDownloadSniffer.isMediaStream(reqUrl, null)) {
                                         if (isResolved.compareAndSet(false, true)) {
                                             val pageCookies = try { link.url?.let { cookieManager.getCookie(it) } } catch (_: Exception) { null }
-                                            val rootCookies = try { cookieManager.getCookie("https://megaup.net") } catch (_: Exception) { null }
+                                            val rootCookies = try {
+                                                if (cleanUrl.contains("usersdrive.com")) {
+                                                    cookieManager.getCookie("https://usersdrive.com")
+                                                } else {
+                                                    cookieManager.getCookie("https://megaup.net")
+                                                }
+                                            } catch (_: Exception) { null }
                                             val dlHostCookies = try { cookieManager.getCookie("https://download.megaup.net") } catch (_: Exception) { null }
                                             val dlCookies = try { cookieManager.getCookie(reqUrl) } catch (_: Exception) { null }
                                             val mergedCookies = listOfNotNull(pageCookies, rootCookies, dlHostCookies, dlCookies)
@@ -437,11 +469,13 @@ fun InteractiveDownloadSheet(
 
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     super.onPageFinished(view, url)
-                                    // Robust countdown timer bypass: zeroes out countdown and reveals download button immediately
+                                    // Robust countdown timer bypass and auto-submission for MegaUp and UsersDrive
                                     val jsTimerBypass = """
                                         (function() {
                                             var autoClicked = false;
+                                            var formSubmitted = false;
                                             function bypass() {
+                                                // 1. Countdown timer bypass (MegaUp & UsersDrive / XFileSharing)
                                                 if (typeof seconds !== 'undefined' && typeof display === 'function') {
                                                     seconds = 0;
                                                     display();
@@ -449,26 +483,60 @@ fun InteractiveDownloadSheet(
                                                         clearInterval(countdownTimer);
                                                     }
                                                 }
-                                                var btn = document.querySelector('.download-timer a, #btn-download, a.btn-download');
-                                                if (btn) {
-                                                    btn.classList.remove('disabled');
-                                                    btn.removeAttribute('disabled');
-                                                    btn.style.display = 'block';
-                                                    btn.style.pointerEvents = 'auto';
+                                                if (typeof countdown !== 'undefined') countdown = 0;
+                                                if (typeof count !== 'undefined') count = 0;
+                                                if (typeof c !== 'undefined') c = 0;
 
-                                                    // Auto-click to seamlessly advance straight to the Turnstile verification screen
+                                                // 2. MegaUp Download Button Reveal & Auto-Click
+                                                var megaUpBtn = document.querySelector('.download-timer a, #btn-download, a.btn-download');
+                                                if (megaUpBtn) {
+                                                    megaUpBtn.classList.remove('disabled');
+                                                    megaUpBtn.removeAttribute('disabled');
+                                                    megaUpBtn.style.display = 'block';
+                                                    megaUpBtn.style.pointerEvents = 'auto';
+
                                                     if (!autoClicked) {
-                                                        var href = btn.getAttribute('href');
+                                                        var href = megaUpBtn.getAttribute('href');
                                                         if (href && href.indexOf('download.megaup.net') !== -1) {
                                                             autoClicked = true;
-                                                            btn.click();
+                                                            megaUpBtn.click();
+                                                        }
+                                                    }
+                                                }
+
+                                                // 3. UsersDrive: Step 1 Auto-submit "Free Download" Form
+                                                if (!formSubmitted) {
+                                                    var freeBtn = document.querySelector('input[name="method_free"], button[name="method_free"], input[value*="Free Download"], input[value*="Free"]');
+                                                    if (freeBtn) {
+                                                        var hasCaptcha = document.querySelector('.g-recaptcha, .cf-turnstile, #captcha, img[src*="captcha"]');
+                                                        if (!hasCaptcha) {
+                                                            formSubmitted = true;
+                                                            freeBtn.click();
+                                                            return;
+                                                        }
+                                                    }
+                                                }
+
+                                                // 4. UsersDrive: Step 2 Auto-click Direct Download Button
+                                                var usersDriveDlBtn = document.querySelector('#downloadbtn, .downloadbtn, a[href*="/d/"], a[href*="usersdrive.com/d/"]');
+                                                if (usersDriveDlBtn) {
+                                                    usersDriveDlBtn.classList.remove('disabled');
+                                                    usersDriveDlBtn.removeAttribute('disabled');
+                                                    usersDriveDlBtn.style.display = 'block';
+                                                    usersDriveDlBtn.style.pointerEvents = 'auto';
+
+                                                    if (!autoClicked) {
+                                                        var dlHref = usersDriveDlBtn.getAttribute('href');
+                                                        if (dlHref && (dlHref.indexOf('/d/') !== -1 || dlHref.indexOf('.mp4') !== -1 || dlHref.indexOf('.mkv') !== -1)) {
+                                                            autoClicked = true;
+                                                            usersDriveDlBtn.click();
                                                         }
                                                     }
                                                 }
                                             }
                                             bypass();
                                             var bypassInterval = setInterval(bypass, 200);
-                                            setTimeout(function() { clearInterval(bypassInterval); }, 7000);
+                                            setTimeout(function() { clearInterval(bypassInterval); }, 8000);
                                         })();
                                     """.trimIndent()
                                     view?.evaluateJavascript(jsTimerBypass, null)

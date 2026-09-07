@@ -147,7 +147,14 @@ object DirectDownloadResolver {
             return true
         }
 
-        // Direct media files that are NOT megaup landing pages
+        // UsersDrive landing pages (direct links contain /d/ or /files/ or use fs/dl subdomains)
+        if ((cleanUrl.contains("://usersdrive.com/") || cleanUrl.contains("://www.usersdrive.com/")) &&
+            !cleanUrl.contains("/d/") && !cleanUrl.contains("/files/")
+        ) {
+            return true
+        }
+
+        // Direct media files that are NOT megaup or usersdrive landing pages
         if (pathWithoutQuery.endsWith(".mp4") ||
             pathWithoutQuery.endsWith(".mkv") ||
             pathWithoutQuery.endsWith(".webm") ||

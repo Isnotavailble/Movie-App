@@ -95,6 +95,20 @@ class WebViewSnifferUnitTest {
     }
 
     @Test
+    @Trait(category = "negative", secondary = "critical-path")
+    fun testSnifferMediaDetection_usersDriveLandingPageVsDirectStream() {
+        // UsersDrive landing page ending in .mp4 is an HTML page
+        val landingUrl = "https://usersdrive.com/abc123xyz/The.Movie.2024.mp4"
+        assertFalse("UsersDrive landing page must NOT be treated as media stream",
+            WebViewDownloadSniffer.isMediaStream(landingUrl, null))
+
+        // UsersDrive direct link contains /d/ and must be recognized
+        val directUrl = "https://usersdrive.com/d/abc123xyz/The.Movie.2024.mp4"
+        assertTrue("UsersDrive direct link must be recognized as media stream",
+            WebViewDownloadSniffer.isMediaStream(directUrl, null))
+    }
+
+    @Test
     @Trait(category = "positive", secondary = "integration")
     fun testMovieDownloadServiceStart() {
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -134,15 +148,30 @@ class WebViewSnifferUnitTest {
     fun testIsKnownWebPortal_excludesDirectMediaUrls() {
         // Direct media files even hosted on portal domains are valid media files
         assertFalse(DirectDownloadResolver.isKnownWebPortal("https://usersdrive.com/files/movie.mp4"))
+        assertFalse(DirectDownloadResolver.isKnownWebPortal("https://usersdrive.com/d/abc123xyz/movie.mp4"))
         assertFalse(DirectDownloadResolver.isKnownWebPortal("https://yoteshinportal.cc/download/movie.mkv"))
         assertFalse(DirectDownloadResolver.isKnownWebPortal("https://s14.megaup.net/storage/The.Yellow.Elephant.2013.720p.mp4"))
 
         // HTML portal pages
         assertTrue(DirectDownloadResolver.isKnownWebPortal("https://usersdrive.com/sample999.html"))
+        assertTrue(DirectDownloadResolver.isKnownWebPortal("https://usersdrive.com/abc123xyz/The.Movie.2024.mp4"))
         assertTrue(DirectDownloadResolver.isKnownWebPortal("https://yoteshinportal.cc/hydra-2025"))
         assertTrue(DirectDownloadResolver.isKnownWebPortal("https://drive.google.com/file/d/123/view"))
         assertTrue(DirectDownloadResolver.isKnownWebPortal("https://megaup.net/34b80bbb30a44b69fe97c96018651be8/The.Yellow.Elephant.2013.720p.mp4"))
         assertTrue(DirectDownloadResolver.isKnownWebPortal("https://download.megaup.net/?url=https%3A%2F%2Fs14.megaup.net"))
+    }
+
+    @Test
+    @Trait(category = "positive", secondary = "critical-path")
+    fun testDownloadLinkDTO_serverIdentification() {
+        val megaupDto = DownloadLinkDTO(serverName = "Megaup", url = "https://megaup.net/123")
+        assertTrue(megaupDto.isMegaUp)
+
+        val usersdriveDto = DownloadLinkDTO(serverName = "Usersdrive", url = "https://usersdrive.com/456")
+        assertTrue(usersdriveDto.isUsersDrive)
+
+        val yoteshinDto = DownloadLinkDTO(serverName = "Yoteshin", url = "https://yoteshinportal.cc/789")
+        assertTrue(yoteshinDto.isYoteshin)
     }
 
     @Test
