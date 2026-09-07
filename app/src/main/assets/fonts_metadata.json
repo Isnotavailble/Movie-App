@@ -1,0 +1,17 @@
+{
+  "source": "https://theakkhayar.com/fonts/",
+  "total_fonts": 1,
+  "fonts": [
+    {
+      "id": 5,
+      "name": "Padauk Font",
+      "clean_filename": "padauk_font",
+      "status": "Premium",
+      "price": 7000.0,
+      "description": "Font designကို elegant နဲ့ clean look ဖြစ်တဲ့ပုံစံမျိုးလေးဖန်တီးထားပါတယ်။ modern ဖောင့်တစ်ခုဖြစ်တာကြောင့် ခေါင်းစီးလို နေရာမျိုးတွေ နဲ့ elegant ဖြစ်တဲ့နေရာမျိုးမှာ အသုံးပြုတာက ပိုလိုက်ဖက်ပြီး သင့်တော်ပါတယ်လို အကြံပေးချင်ပါတယ်။\n",
+      "preview_image_url": "https://incredible-canary-57.convex.cloud/api/storage/ddfe0940-cf50-4822-8629-7465b0b08f89?v=1788428362882.9858",
+      "woff2_file": "woff2\\padauk_font.woff2",
+      "ttf_file": "ttf\\padauk_font.ttf"
+    }
+  ]
+}
