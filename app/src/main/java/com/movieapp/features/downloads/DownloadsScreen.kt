@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -90,6 +91,7 @@ fun DownloadsScreen(
 
     val neoColors = MaterialTheme.neoColors
     var selectedTab by remember { mutableIntStateOf(0) } // 0: Currently Downloading, 1: History
+    var activeViewingDownload by remember { mutableStateOf<DownloadEntity?>(null) }
 
     Column(
         modifier = modifier
@@ -232,7 +234,7 @@ fun DownloadsScreen(
                         CompletedDownloadCard(
                             download = download,
                             onPlay = {
-                                DownloadManagerHelper.openDownloadedFile(context, download)
+                                activeViewingDownload = download
                             },
                             onDelete = {
                                 downloadRepo.deleteDownload(download)
@@ -241,6 +243,14 @@ fun DownloadsScreen(
                     }
                 }
             }
+        }
+
+        val currentViewing = activeViewingDownload
+        if (currentViewing != null) {
+            InAppVideoViewerModal(
+                download = currentViewing,
+                onDismiss = { activeViewingDownload = null }
+            )
         }
     }
 }
@@ -386,6 +396,7 @@ fun CompletedDownloadCard(
             .fillMaxWidth()
             .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(12.dp))
             .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
+            .clickable(onClick = onPlay)
     ) {
         Row(
             modifier = Modifier
