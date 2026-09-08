@@ -30,6 +30,11 @@ android {
         }
         val movieApiUrl = envProperties.getProperty("movie_api_url") ?: "https://www.homietv.com/api/"
         buildConfigField("String", "MOVIE_API_URL", "\"$movieApiUrl\"")
+
+        val fallbackMovieApiUrl = envProperties.getProperty("FALLBACK_BASE_URL")
+            ?: envProperties.getProperty("fallback_movie_api_url")
+            ?: "https://ysflix.com/api/"
+        buildConfigField("String", "FALLBACK_MOVIE_API_URL", "\"$fallbackMovieApiUrl\"")
     }
 
     compileOptions {

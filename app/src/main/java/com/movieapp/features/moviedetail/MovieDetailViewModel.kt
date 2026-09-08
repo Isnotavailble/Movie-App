@@ -17,12 +17,18 @@ data class MovieDetailUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val isTvShow: Boolean = false,
+    val selectedSeasonId: Long = 0L,
     val selectedSeasonNumber: Int = 1,
     val isBookmarked: Boolean = false
 ) {
     val activeSeason: SeasonDTO?
-        get() = detail?.safeSeasons?.find { it.seasonNumber == selectedSeasonNumber }
-            ?: detail?.safeSeasons?.firstOrNull()
+        get() = detail?.safeSeasons?.let { seasons ->
+            if (selectedSeasonId != 0L) {
+                seasons.find { it.idLong == selectedSeasonId }
+            } else {
+                seasons.find { it.seasonNumber == selectedSeasonNumber }
+            } ?: seasons.firstOrNull()
+        }
 }
 
 /**
@@ -69,13 +75,16 @@ class MovieDetailViewModel(
         _uiState.update { current ->
             if (cachedDetail != null) {
                 // Instantly hydrate already fetched title - no skeleton flicker
+                val firstCachedSeason = cachedDetail.safeSeasons.firstOrNull()
+                val isTv = cachedDetail.isTvShow || isTvShow
                 current.copy(
                     detail = cachedDetail,
-                    isTvShow = isTvShow,
+                    isTvShow = isTv,
                     isLoading = false,
                     errorMessage = null,
                     isBookmarked = false,
-                    selectedSeasonNumber = cachedDetail.safeSeasons.firstOrNull()?.seasonNumber ?: 1
+                    selectedSeasonId = firstCachedSeason?.idLong ?: 0L,
+                    selectedSeasonNumber = firstCachedSeason?.seasonNumber ?: 1
                 )
             } else if (isDifferentTitle) {
                 // New title never fetched before: show skeleton while loading
@@ -85,6 +94,7 @@ class MovieDetailViewModel(
                     isLoading = true,
                     errorMessage = null,
                     isBookmarked = false,
+                    selectedSeasonId = 0L,
                     selectedSeasonNumber = 1
                 )
             } else {
@@ -122,13 +132,16 @@ class MovieDetailViewModel(
                         if (data != null) {
                             detailCache[slug] = data
                         }
-                        val firstSeason = data?.safeSeasons?.firstOrNull()?.seasonNumber ?: 1
+                        val firstSeason = data?.safeSeasons?.firstOrNull()
+                        val isActuallyTv = (data?.isTvShow == true) || isTvShow
                         _uiState.update {
                             it.copy(
                                 detail = data,
+                                isTvShow = isActuallyTv,
                                 isLoading = false,
                                 errorMessage = null,
-                                selectedSeasonNumber = firstSeason
+                                selectedSeasonId = firstSeason?.idLong ?: 0L,
+                                selectedSeasonNumber = firstSeason?.seasonNumber ?: 1
                             )
                         }
                     }
@@ -168,10 +181,28 @@ class MovieDetailViewModel(
     }
 
     /**
-     * Updates the selected season for TV shows.
+     * Updates the selected season for TV shows using the full SeasonDTO.
+     */
+    fun selectSeason(season: SeasonDTO) {
+        _uiState.update {
+            it.copy(
+                selectedSeasonId = season.idLong,
+                selectedSeasonNumber = season.seasonNumber
+            )
+        }
+    }
+
+    /**
+     * Updates the selected season for TV shows by season number.
      */
     fun selectSeason(seasonNumber: Int) {
-        _uiState.update { it.copy(selectedSeasonNumber = seasonNumber) }
+        val matchingSeason = _uiState.value.detail?.safeSeasons?.find { it.seasonNumber == seasonNumber }
+        _uiState.update {
+            it.copy(
+                selectedSeasonId = matchingSeason?.idLong ?: 0L,
+                selectedSeasonNumber = seasonNumber
+            )
+        }
     }
 
     /**
