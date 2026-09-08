@@ -84,6 +84,8 @@ class MovieListViewModel(
     val uiState: StateFlow<MovieListUiState> = _uiState.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
+    private var fetchMoviesJob: kotlinx.coroutines.Job? = null
+    private var fetchTvShowsJob: kotlinx.coroutines.Job? = null
 
     init {
         loadInitialFeeds()
@@ -127,11 +129,13 @@ class MovieListViewModel(
                             val filtered = allResults.filter { item ->
                                 if (category == MediaCategory.MOVIES) !item.isTvShow else item.isTvShow
                             }
+                            val currentQuery = _searchQuery.value.trim()
+                            val ranked = com.movieapp.features.search.SearchRanker.rank(filtered, currentQuery)
                             _uiState.update { current ->
                                 if (category == MediaCategory.MOVIES) {
-                                    current.copy(moviesSearchResults = filtered, isSearching = false)
+                                    current.copy(moviesSearchResults = ranked, isSearching = false)
                                 } else {
-                                    current.copy(tvShowsSearchResults = filtered, isSearching = false)
+                                    current.copy(tvShowsSearchResults = ranked, isSearching = false)
                                 }
                             }
                         }
@@ -226,7 +230,10 @@ class MovieListViewModel(
     }
 
     private fun fetchMoviesPage(page: Int, isRefresh: Boolean = false) {
-        viewModelScope.launch(Dispatchers.Default) {
+        if (isRefresh) {
+            fetchMoviesJob?.cancel()
+        }
+        fetchMoviesJob = viewModelScope.launch(Dispatchers.Default) {
             repository.getMovies(page).collect { resource ->
                 when (resource) {
                     is Resource.Loading -> {
@@ -273,7 +280,10 @@ class MovieListViewModel(
     }
 
     private fun fetchTvShowsPage(page: Int, isRefresh: Boolean = false) {
-        viewModelScope.launch(Dispatchers.Default) {
+        if (isRefresh) {
+            fetchTvShowsJob?.cancel()
+        }
+        fetchTvShowsJob = viewModelScope.launch(Dispatchers.Default) {
             repository.getTvShows(page).collect { resource ->
                 when (resource) {
                     is Resource.Loading -> {
