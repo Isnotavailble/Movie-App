@@ -18,6 +18,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -342,10 +345,10 @@ fun ActiveDownloadCard(
                     )
                 }
 
-                // Prominent Neobrutalist Cancel Download Button
+                // Prominent Neobrutalist Cancel Download Button (Icon only)
                 Box(
                     modifier = Modifier
-                        .defaultMinSize(minHeight = 36.dp)
+                        .size(36.dp)
                         .neoShadow(offsetX = 2.dp, offsetY = 2.dp, color = neoColors.shadow, shape = RoundedCornerShape(8.dp))
                         .background(neoColors.error, RoundedCornerShape(8.dp))
                         .neoBorder(width = 1.5.dp, color = neoColors.border, shape = RoundedCornerShape(8.dp))
@@ -353,28 +356,15 @@ fun ActiveDownloadCard(
                         .semantics {
                             role = Role.Button
                             contentDescription = cancelDownloadLabel
-                        }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        },
                     contentAlignment = Alignment.Center
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            imageVector = NeubrutalismIcons.Close,
-                            contentDescription = null,
-                            tint = neoColors.onError,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = t("cancel_download"),
-                            fontFamily = com.movieapp.theme.buttonFontFamily(),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = neoColors.onError
-                        )
-                    }
+                    Icon(
+                        imageVector = NeubrutalismIcons.Close,
+                        contentDescription = null,
+                        tint = neoColors.onError,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
         }
@@ -387,7 +377,11 @@ fun CompletedDownloadCard(
     onPlay: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
     val neoColors = MaterialTheme.neoColors
+    val openMovieLabel = t("open_movie")
+    val externalDescLabel = t("video_player_external_desc")
+    val deleteDownloadLabel = t("delete_download")
 
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -449,45 +443,75 @@ fun CompletedDownloadCard(
                 }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Play Button
-                Button(
-                    onClick = onPlay,
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = neoColors.primary,
-                        contentColor = neoColors.textPrimary
-                    ),
-                    modifier = Modifier.neoBorder(width = 1.5.dp, color = neoColors.border, shape = RoundedCornerShape(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // In-App Play Button (Icon only)
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .neoShadow(offsetX = 2.dp, offsetY = 2.dp, color = neoColors.shadow, shape = RoundedCornerShape(8.dp))
+                        .background(neoColors.primary, RoundedCornerShape(8.dp))
+                        .neoBorder(width = 1.5.dp, color = neoColors.border, shape = RoundedCornerShape(8.dp))
+                        .clickable(onClick = onPlay)
+                        .semantics {
+                            role = Role.Button
+                            contentDescription = openMovieLabel
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = NeubrutalismIcons.Browse,
+                        imageVector = Icons.Default.PlayArrow,
                         contentDescription = null,
                         tint = neoColors.textPrimary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = t("open_movie"),
-                        fontFamily = buttonFontFamily(),
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
-                        color = neoColors.textPrimary
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                // External Player Button (Icon only)
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .neoShadow(offsetX = 2.dp, offsetY = 2.dp, color = neoColors.shadow, shape = RoundedCornerShape(8.dp))
+                        .background(neoColors.secondary, RoundedCornerShape(8.dp))
+                        .neoBorder(width = 1.5.dp, color = neoColors.border, shape = RoundedCornerShape(8.dp))
+                        .clickable {
+                            DownloadManagerHelper.openDownloadedFile(context, download)
+                        }
+                        .semantics {
+                            role = Role.Button
+                            contentDescription = externalDescLabel
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                        contentDescription = null,
+                        tint = neoColors.textPrimary,
+                        modifier = Modifier.size(17.dp)
+                    )
+                }
 
-                // Delete Button
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier.size(36.dp)
+                // Delete Button (Icon only)
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .neoShadow(offsetX = 2.dp, offsetY = 2.dp, color = neoColors.shadow, shape = RoundedCornerShape(8.dp))
+                        .background(neoColors.surface, RoundedCornerShape(8.dp))
+                        .neoBorder(width = 1.5.dp, color = neoColors.border, shape = RoundedCornerShape(8.dp))
+                        .clickable(onClick = onDelete)
+                        .semantics {
+                            role = Role.Button
+                            contentDescription = deleteDownloadLabel
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = NeubrutalismIcons.Close,
-                        contentDescription = t("delete_download"),
+                        contentDescription = null,
                         tint = neoColors.error,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(17.dp)
                     )
                 }
             }
