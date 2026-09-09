@@ -394,8 +394,10 @@ fun MovieDetailScreen(
                         }
                     }
 
+                    val isTv = uiState.isTvShow || detail.isTvShow || detail.safeSeasons.isNotEmpty()
+
                     // Download Button for Movies (positioned at the bottom, matching TV show action placement)
-                    if (!uiState.isTvShow) {
+                    if (!isTv || (detail.safeSeasons.isEmpty() && detail.safeMovieDownloadLinks.isNotEmpty())) {
                         Spacer(modifier = Modifier.height(16.dp))
                         Box(
                             modifier = Modifier
@@ -435,7 +437,7 @@ fun MovieDetailScreen(
                     }
 
                     // TV Shows: Seasons and Episodes
-                    if (uiState.isTvShow && detail.safeSeasons.isNotEmpty()) {
+                    if (isTv && detail.safeSeasons.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = t("choose_season_episode"),
@@ -456,7 +458,11 @@ fun MovieDetailScreen(
                                 .horizontalScroll(rememberScrollState())
                         ) {
                             detail.safeSeasons.forEach { season ->
-                                val isSelected = season.seasonNumber == uiState.selectedSeasonNumber
+                                val isSelected = if (uiState.selectedSeasonId != 0L) {
+                                    season.idLong == uiState.selectedSeasonId
+                                } else {
+                                    season.seasonNumber == uiState.selectedSeasonNumber
+                                }
                                 val bg = if (isSelected) neoColors.border else neoColors.surface
                                 val textCol = if (isSelected) neoColors.surface else neoColors.textPrimary
 
@@ -466,7 +472,7 @@ fun MovieDetailScreen(
                                         .neoShadow(offsetX = 2.dp, offsetY = 2.dp, color = neoColors.shadow, shape = RoundedCornerShape(8.dp))
                                         .background(bg, RoundedCornerShape(8.dp))
                                         .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(8.dp))
-                                        .clickable { viewModel.selectSeason(season.seasonNumber) }
+                                        .clickable { viewModel.selectSeason(season) }
                                         .semantics {
                                             role = Role.Tab
                                             selected = isSelected
@@ -498,7 +504,8 @@ fun MovieDetailScreen(
                                     .clickable {
                                         // Collect all download links for the entire season
                                         val allSeasonLinks = activeEpisodes.flatMap { it.safeDownloadLinks }
-                                        downloadSheetTitle = "${detail.displayTitle} - Season ${uiState.selectedSeasonNumber} (All Episodes)"
+                                        val seasonName = uiState.activeSeason?.displayName ?: "Season ${uiState.selectedSeasonNumber}"
+                                        downloadSheetTitle = "${detail.displayTitle} - $seasonName (All Episodes)"
                                         currentDownloadLinks = allSeasonLinks
                                         showDownloadSheet = true
                                     }
@@ -540,7 +547,8 @@ fun MovieDetailScreen(
                                     .background(neoColors.surface, RoundedCornerShape(10.dp))
                                     .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(10.dp))
                                     .clickable {
-                                        downloadSheetTitle = "${detail.displayTitle} - ${episode.displayTitle}"
+                                        val seasonName = uiState.activeSeason?.displayName?.let { "$it - " } ?: ""
+                                        downloadSheetTitle = "${detail.displayTitle} - $seasonName${episode.displayTitle}"
                                         currentDownloadLinks = episode.safeDownloadLinks
                                         showDownloadSheet = true
                                     }

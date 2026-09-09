@@ -121,18 +121,36 @@ data class SeasonDTO(
     @SerializedName("episodes")
     val episodes: List<EpisodeDTO>? = null
 ) {
+    val idLong: Long
+        get() = when (id) {
+            is Number -> id.toLong()
+            is String -> id.toLongOrNull() ?: 0L
+            else -> 0L
+        }
+
     val seasonNumber: Int
-        get() = when (rawSeasonNumber) {
-            is Number -> rawSeasonNumber.toInt()
-            is String -> rawSeasonNumber.toIntOrNull() ?: 1
-            else -> 1
+        get() {
+            val fromRaw = when (rawSeasonNumber) {
+                is Number -> rawSeasonNumber.toInt()
+                is String -> rawSeasonNumber.toIntOrNull()
+                else -> null
+            }
+            if (fromRaw != null && fromRaw > 0) return fromRaw
+
+            val fromName = name?.let { Regex("""\d+""").find(it)?.value?.toIntOrNull() }
+            if (fromName != null && fromName > 0) return fromName
+
+            val fromEpisode = episodes?.firstOrNull()?.seasonNumber
+            if (fromEpisode != null && fromEpisode > 0) return fromEpisode
+
+            return 1
         }
 
     val safeEpisodes: List<EpisodeDTO>
         get() = episodes ?: emptyList()
 
     val displayName: String
-        get() = name ?: "Season $seasonNumber"
+        get() = name?.takeIf { it.isNotBlank() } ?: "Season $seasonNumber"
 }
 
 /**
@@ -141,6 +159,9 @@ data class SeasonDTO(
 data class EpisodeDTO(
     @SerializedName("id")
     val id: Any? = null,
+
+    @SerializedName("season_number", alternate = ["season"])
+    private val rawSeasonNumber: Any? = null,
 
     @SerializedName("episode_number", alternate = ["number", "episode"])
     private val rawEpisodeNumber: Any? = null,
@@ -157,6 +178,20 @@ data class EpisodeDTO(
     @SerializedName("tvshow_download_links", alternate = ["download_links"])
     val tvDownloadLinks: List<DownloadLinkDTO>? = null
 ) {
+    val idLong: Long
+        get() = when (id) {
+            is Number -> id.toLong()
+            is String -> id.toLongOrNull() ?: 0L
+            else -> 0L
+        }
+
+    val seasonNumber: Int
+        get() = when (rawSeasonNumber) {
+            is Number -> rawSeasonNumber.toInt()
+            is String -> rawSeasonNumber.toIntOrNull() ?: 1
+            else -> 1
+        }
+
     val episodeNumber: Int
         get() = when (rawEpisodeNumber) {
             is Number -> rawEpisodeNumber.toInt()

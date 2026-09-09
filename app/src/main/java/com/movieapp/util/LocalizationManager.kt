@@ -110,7 +110,18 @@ object LocalizationManager {
         "yoteshin_get_app" to "Get Yoteshin Drive App",
         "yoteshin_open_browser_signin" to "Open in Browser & Sign In",
         "yoteshin_login_badge" to "Google Sign-In",
-        "open_in_browser_action" to "Open in Browser to Download"
+        "open_in_browser_action" to "Open in Browser to Download",
+        "video_player_close" to "Close player",
+        "video_player_play" to "Play",
+        "video_player_pause" to "Pause",
+        "video_player_rewind" to "Rewind 10 seconds",
+        "video_player_forward" to "Forward 10 seconds",
+        "video_player_external" to "External",
+        "video_player_external_desc" to "Open in external video player",
+        "video_player_error" to "Unable to play video file. Tap external to open in VLC or MX Player.",
+        "video_player_tap_hint" to "Tap screen to toggle controls",
+        "video_player_scrubber" to "Video timeline scrubber",
+        "video_player_screen_awake" to "Screen stays awake"
     )
 
     fun initialize(context: Context) {

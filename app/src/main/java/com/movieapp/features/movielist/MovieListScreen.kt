@@ -2,6 +2,8 @@ package com.movieapp.features.movielist
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -160,6 +162,7 @@ fun MovieListScreen(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
                         .padding(top = 24.dp),
                     contentAlignment = Alignment.TopCenter
                 ) {
@@ -206,6 +209,44 @@ fun MovieListScreen(
             } else if (uiState.isInitialLoading && displayList.isEmpty()) {
                 // Initial Loading State with Skeleton Cards
                 com.movieapp.theme.MovieListFeedSkeleton(modifier = Modifier.weight(1f))
+            } else if (uiState.errorMessage != null && displayList.isEmpty()) {
+                // Full screen scrollable error container so pull-to-refresh works when list is empty
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(top = 24.dp),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow)
+                            .background(neoColors.errorBackground, RoundedCornerShape(12.dp))
+                            .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
+                            .padding(14.dp)
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = uiState.errorMessage ?: "",
+                                fontFamily = bodyFontFamily(),
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = neoColors.textPrimary,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            NeoButton(
+                                onClick = { viewModel.retry(targetCategory) },
+                                text = t("try_again"),
+                                backgroundColor = neoColors.primary,
+                                contentColor = neoColors.textPrimary
+                            )
+                        }
+                    }
+                }
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
@@ -250,33 +291,35 @@ fun MovieListScreen(
                 }
             }
 
-            // Inline Error Notice & Retry Button
-            uiState.errorMessage?.let { errorText ->
-                Spacer(modifier = Modifier.height(8.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow)
-                        .background(neoColors.errorBackground, RoundedCornerShape(12.dp))
-                        .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
-                        .padding(14.dp)
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = errorText,
-                            fontFamily = bodyFontFamily(),
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = neoColors.textPrimary
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        NeoButton(
-                            onClick = { viewModel.retry(targetCategory) },
-                            text = t("try_again"),
-                            backgroundColor = neoColors.primary,
-                            contentColor = neoColors.textPrimary
-                        )
+            // Inline Error Notice & Retry Button (only when list already has items)
+            if (uiState.errorMessage != null && displayList.isNotEmpty()) {
+                uiState.errorMessage?.let { errorText ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow)
+                            .background(neoColors.errorBackground, RoundedCornerShape(12.dp))
+                            .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
+                            .padding(14.dp)
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = errorText,
+                                fontFamily = bodyFontFamily(),
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = neoColors.textPrimary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            NeoButton(
+                                onClick = { viewModel.retry(targetCategory) },
+                                text = t("try_again"),
+                                backgroundColor = neoColors.primary,
+                                contentColor = neoColors.textPrimary
+                            )
+                        }
                     }
                 }
             }

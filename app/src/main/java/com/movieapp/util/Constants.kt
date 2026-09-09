@@ -10,6 +10,11 @@ object Constants {
     val BASE_URL: String = com.movieapp.BuildConfig.MOVIE_API_URL
 
     /**
+     * Fallback Base URL for titles hosted on the secondary YSFlix partner backend.
+     */
+    val FALLBACK_BASE_URL: String = com.movieapp.BuildConfig.FALLBACK_MOVIE_API_URL
+
+    /**
      * Connection and socket timeout in seconds.
      */
     const val NETWORK_TIMEOUT_SECONDS = 30L

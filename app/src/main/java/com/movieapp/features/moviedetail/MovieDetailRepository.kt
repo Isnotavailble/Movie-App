@@ -21,12 +21,81 @@ import kotlinx.coroutines.withContext
 class MovieDetailRepository(
     private val apiService: MovieApiService = NetworkClient.apiService,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val movieDao: MovieDao? = null
+    private val movieDao: MovieDao? = null,
+    private val fallbackApiService: MovieApiService = NetworkClient.fallbackApiService
 ) {
     private val activeDao: MovieDao
         get() = movieDao ?: MovieApplication.instance.database.movieDao()
 
     private val gson = Gson()
+
+    /**
+     * Attempts to fetch TV show metadata across primary (HomieTV) and secondary (YSFlix) backends.
+     */
+    private suspend fun fetchTvShowNetworkData(slug: String): MovieDetailDTO? {
+        // 1. Primary: HomieTV tv-shows
+        try {
+            val response = apiService.getTvShowDetail(slug)
+            if (response.data != null) return response.data
+        } catch (e: Exception) {
+            android.util.Log.w("MovieDetailRepository", "Primary tv-show fetch failed for $slug: ${e.message}")
+        }
+
+        // 2. Secondary: YSFlix tv-shows (e.g. The Bear)
+        try {
+            val fallbackResponse = fallbackApiService.getTvShowDetail(slug)
+            if (fallbackResponse.data != null) return fallbackResponse.data
+        } catch (e: Exception) {
+            android.util.Log.w("MovieDetailRepository", "Fallback tv-show fetch failed for $slug: ${e.message}")
+        }
+
+        // 3. Safety net: Check movie endpoints in case of classification mismatch
+        try {
+            val movieResponse = apiService.getMovieDetail(slug)
+            if (movieResponse.data != null) return movieResponse.data
+        } catch (_: Exception) {}
+
+        try {
+            val fallbackMovieResponse = fallbackApiService.getMovieDetail(slug)
+            if (fallbackMovieResponse.data != null) return fallbackMovieResponse.data
+        } catch (_: Exception) {}
+
+        return null
+    }
+
+    /**
+     * Attempts to fetch movie metadata across primary (HomieTV) and secondary (YSFlix) backends.
+     */
+    private suspend fun fetchMovieNetworkData(slug: String): MovieDetailDTO? {
+        // 1. Primary: HomieTV movies
+        try {
+            val response = apiService.getMovieDetail(slug)
+            if (response.data != null) return response.data
+        } catch (e: Exception) {
+            android.util.Log.w("MovieDetailRepository", "Primary movie fetch failed for $slug: ${e.message}")
+        }
+
+        // 2. Secondary: YSFlix movies
+        try {
+            val fallbackResponse = fallbackApiService.getMovieDetail(slug)
+            if (fallbackResponse.data != null) return fallbackResponse.data
+        } catch (e: Exception) {
+            android.util.Log.w("MovieDetailRepository", "Fallback movie fetch failed for $slug: ${e.message}")
+        }
+
+        // 3. Safety net: Check tv-show endpoints in case of classification mismatch
+        try {
+            val tvResponse = apiService.getTvShowDetail(slug)
+            if (tvResponse.data != null) return tvResponse.data
+        } catch (_: Exception) {}
+
+        try {
+            val fallbackTvResponse = fallbackApiService.getTvShowDetail(slug)
+            if (fallbackTvResponse.data != null) return fallbackTvResponse.data
+        } catch (_: Exception) {}
+
+        return null
+    }
 
     /**
      * Retrieves full detail metadata for a movie by slug with Room caching.
@@ -47,11 +116,11 @@ class MovieDetailRepository(
             }
         }
 
-        // 2. Fetch fresh data from network
+        // 2. Fetch fresh data from network with dual-backend fallback
         try {
-            val response = apiService.getMovieDetail(slug)
-            val data = response.data
+            val data = fetchMovieNetworkData(slug)
             if (data != null) {
+                val isActuallyTv = data.isTvShow
                 // Save to Room cache without overwriting user bookmark status
                 val updatedRows = activeDao.updateMetadata(
                     slug = slug,
@@ -59,7 +128,7 @@ class MovieDetailRepository(
                     poster = data.poster,
                     rating = data.formattedRating,
                     releaseYear = data.displayYear,
-                    isTvShow = false,
+                    isTvShow = isActuallyTv,
                     plot = data.plot,
                     jsonDetail = gson.toJson(data),
                     cachedAt = System.currentTimeMillis()
@@ -71,7 +140,7 @@ class MovieDetailRepository(
                         poster = data.poster,
                         rating = data.formattedRating,
                         releaseYear = data.displayYear,
-                        isTvShow = false,
+                        isTvShow = isActuallyTv,
                         plot = data.plot,
                         jsonDetail = gson.toJson(data),
                         isBookmarked = false,
@@ -111,11 +180,11 @@ class MovieDetailRepository(
             }
         }
 
-        // 2. Fetch fresh data from network
+        // 2. Fetch fresh data from network with dual-backend fallback
         try {
-            val response = apiService.getTvShowDetail(slug)
-            val data = response.data
+            val data = fetchTvShowNetworkData(slug)
             if (data != null) {
+                val isActuallyTv = data.isTvShow
                 // Save to Room cache without overwriting user bookmark status
                 val updatedRows = activeDao.updateMetadata(
                     slug = slug,
@@ -123,7 +192,7 @@ class MovieDetailRepository(
                     poster = data.poster,
                     rating = data.formattedRating,
                     releaseYear = data.displayYear,
-                    isTvShow = true,
+                    isTvShow = isActuallyTv,
                     plot = data.plot,
                     jsonDetail = gson.toJson(data),
                     cachedAt = System.currentTimeMillis()
@@ -135,7 +204,7 @@ class MovieDetailRepository(
                         poster = data.poster,
                         rating = data.formattedRating,
                         releaseYear = data.displayYear,
-                        isTvShow = true,
+                        isTvShow = isActuallyTv,
                         plot = data.plot,
                         jsonDetail = gson.toJson(data),
                         isBookmarked = false,

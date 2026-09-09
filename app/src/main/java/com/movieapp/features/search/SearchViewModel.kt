@@ -64,9 +64,12 @@ class SearchViewModel(
                             _uiState.update { it.copy(isLoading = true, isInitial = false, errorMessage = null) }
                         }
                         is Resource.Success -> {
+                            val rawItems = resource.data?.safeItems ?: emptyList()
+                            val currentQuery = _searchQuery.value.trim()
+                            val rankedItems = SearchRanker.rank(rawItems, currentQuery)
                             _uiState.update {
                                 it.copy(
-                                    results = resource.data?.safeItems ?: emptyList(),
+                                    results = rankedItems,
                                     isLoading = false,
                                     isInitial = false,
                                     errorMessage = null

@@ -90,7 +90,18 @@
     "cloudflare_verify_desc": "If a challenge appears, tap it to proceed. Otherwise, download starts automatically.",
     "cancel_other_options": "Cancel & Choose Other Options",
     "back_to_links": "Back to Links",
-    "resolving_automated": "Bypassing verification & preparing download..."
+    "resolving_automated": "Preparing download...",
+    "video_player_close": "Close player",
+    "video_player_play": "Play",
+    "video_player_pause": "Pause",
+    "video_player_rewind": "Rewind 10 seconds",
+    "video_player_forward": "Forward 10 seconds",
+    "video_player_external": "External",
+    "video_player_external_desc": "Open in external video player",
+    "video_player_error": "Unable to play video file. Tap external to open in VLC or MX Player.",
+    "video_player_tap_hint": "Tap screen to toggle controls",
+    "video_player_scrubber": "Video timeline scrubber",
+    "video_player_screen_awake": "Screen stays awake"
   },
   "my": {
     "app_title": "ရုပ်ရှင်ဇုန်",
@@ -183,6 +194,17 @@
     "cloudflare_verify_desc": "ပုံရွေးချယ်မှု ပေါ်လာပါက နှိပ်ပေးပါ။ သို့မဟုတ်ပါက အလိုအလျောက် စတင်ဒေါင်းလုဒ်ဆွဲပါမည်။",
     "cancel_other_options": "အခြားနည်းလမ်းများဖြင့် ဒေါင်းလုဒ်ရယူမည်",
     "back_to_links": "လင့်ခ်များစာရင်းသို့ ပြန်သွားမည်",
-    "resolving_automated": "လင့်ခ်စစ်ဆေးမှုကျော်လွှားပြီး ဒေါင်းလုဒ်ပြင်ဆင်နေပါသည်..."
+    "resolving_automated": "ဒေါင်းလုဒ်ပြင်ဆင်နေပါသည်...",
+    "video_player_close": "ဗီဒီယိုပိတ်မည်",
+    "video_player_play": "ဖွင့်မည်",
+    "video_player_pause": "ခေတ္တရပ်မည်",
+    "video_player_rewind": "၁၀ စက္ကန့် နောက်သို့",
+    "video_player_forward": "၁၀ စက္ကန့် ရှေ့သို့",
+    "video_player_external": "အခြားအက်ပ်",
+    "video_player_external_desc": "အခြားဗီဒီယိုပလေယာဖြင့် ဖွင့်မည်",
+    "video_player_error": "ဗီဒီယိုဖွင့်၍မရပါ။ အခြား player ဖြင့် ဖွင့်ကြည့်ပါ။",
+    "video_player_tap_hint": "ခလုတ်များကြည့်ရန် မျက်နှာပြင်ကို နှိပ်ပါ",
+    "video_player_scrubber": "ဗီဒီယိုချိန်ညှိတံ",
+    "video_player_screen_awake": "မျက်နှာပြင် မပိတ်ပါ"
   }
 }

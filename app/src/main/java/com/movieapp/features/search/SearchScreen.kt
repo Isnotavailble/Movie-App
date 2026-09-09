@@ -2,6 +2,8 @@ package com.movieapp.features.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -223,28 +225,36 @@ fun SearchScreen(
             uiState.errorMessage != null -> {
                 Box(
                     modifier = Modifier
+                        .weight(1f)
                         .fillMaxWidth()
-                        .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow)
-                        .background(neoColors.errorBackground, RoundedCornerShape(12.dp))
-                        .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
-                        .padding(16.dp)
+                        .verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.TopCenter
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = uiState.errorMessage ?: "",
-                            fontFamily = bodyFontFamily(),
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = neoColors.textPrimary
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        NeoButton(
-                            onClick = { viewModel.retry() },
-                            text = t("try_again"),
-                            backgroundColor = neoColors.primary,
-                            contentColor = neoColors.textPrimary
-                        )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow)
+                            .background(neoColors.errorBackground, RoundedCornerShape(12.dp))
+                            .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
+                            .padding(16.dp)
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = uiState.errorMessage ?: "",
+                                fontFamily = bodyFontFamily(),
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = neoColors.textPrimary
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            NeoButton(
+                                onClick = { viewModel.retry() },
+                                text = t("try_again"),
+                                backgroundColor = neoColors.primary,
+                                contentColor = neoColors.textPrimary
+                            )
+                        }
                     }
                 }
             }
@@ -252,62 +262,78 @@ fun SearchScreen(
                 // Empty State with guidance (US-05)
                 Box(
                     modifier = Modifier
+                        .weight(1f)
                         .fillMaxWidth()
-                        .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(12.dp))
-                        .background(neoColors.surfaceMuted, RoundedCornerShape(12.dp))
-                        .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
-                        .padding(20.dp),
-                    contentAlignment = Alignment.Center
+                        .verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.TopCenter
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = t("search_empty_title"),
-                            fontFamily = headerFontFamily(),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            lineHeight = 22.sp,
-                            color = neoColors.textPrimary
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = t("search_empty_desc"),
-                            fontFamily = bodyFontFamily(),
-                            fontSize = 12.sp,
-                            lineHeight = 18.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = neoColors.textSecondary
-                        )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(12.dp))
+                            .background(neoColors.surfaceMuted, RoundedCornerShape(12.dp))
+                            .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
+                            .padding(20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = t("search_empty_title"),
+                                fontFamily = headerFontFamily(),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                lineHeight = 22.sp,
+                                color = neoColors.textPrimary
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = t("search_empty_desc"),
+                                fontFamily = bodyFontFamily(),
+                                fontSize = 12.sp,
+                                lineHeight = 18.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = neoColors.textSecondary
+                            )
+                        }
                     }
                 }
             }
             uiState.isInitial -> {
                 Box(
                     modifier = Modifier
+                        .weight(1f)
                         .fillMaxWidth()
-                        .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(12.dp))
-                        .background(neoColors.surfaceMuted, RoundedCornerShape(12.dp))
-                        .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
-                        .padding(20.dp),
-                    contentAlignment = Alignment.Center
+                        .verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.TopCenter
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = t("search_prompt_title"),
-                            fontFamily = headerFontFamily(),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            lineHeight = 22.sp,
-                            color = neoColors.textPrimary
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = t("search_prompt_desc"),
-                            fontFamily = bodyFontFamily(),
-                            fontSize = 12.sp,
-                            lineHeight = 18.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = neoColors.textSecondary
-                        )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(12.dp))
+                            .background(neoColors.surfaceMuted, RoundedCornerShape(12.dp))
+                            .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
+                            .padding(20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = t("search_prompt_title"),
+                                fontFamily = headerFontFamily(),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                lineHeight = 22.sp,
+                                color = neoColors.textPrimary
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = t("search_prompt_desc"),
+                                fontFamily = bodyFontFamily(),
+                                fontSize = 12.sp,
+                                lineHeight = 18.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = neoColors.textSecondary
+                            )
+                        }
                     }
                 }
             }

@@ -55,4 +55,13 @@ object NetworkClient {
             .build()
             .create(MovieApiService::class.java)
     }
+
+    val fallbackApiService: MovieApiService by lazy {
+        Retrofit.Builder()
+            .baseUrl(Constants.FALLBACK_BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+            .create(MovieApiService::class.java)
+    }
 }
