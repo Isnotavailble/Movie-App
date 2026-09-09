@@ -129,7 +129,7 @@ class MovieDetailRepository(
                     rating = data.formattedRating,
                     releaseYear = data.displayYear,
                     isTvShow = isActuallyTv,
-                    plot = data.plot,
+                    plot = data.cleanPlot ?: data.plot,
                     jsonDetail = gson.toJson(data),
                     cachedAt = System.currentTimeMillis()
                 )
@@ -141,7 +141,7 @@ class MovieDetailRepository(
                         rating = data.formattedRating,
                         releaseYear = data.displayYear,
                         isTvShow = isActuallyTv,
-                        plot = data.plot,
+                        plot = data.cleanPlot ?: data.plot,
                         jsonDetail = gson.toJson(data),
                         isBookmarked = false,
                         bookmarkedAt = 0L,
@@ -193,7 +193,7 @@ class MovieDetailRepository(
                     rating = data.formattedRating,
                     releaseYear = data.displayYear,
                     isTvShow = isActuallyTv,
-                    plot = data.plot,
+                    plot = data.cleanPlot ?: data.plot,
                     jsonDetail = gson.toJson(data),
                     cachedAt = System.currentTimeMillis()
                 )
@@ -205,7 +205,7 @@ class MovieDetailRepository(
                         rating = data.formattedRating,
                         releaseYear = data.displayYear,
                         isTvShow = isActuallyTv,
-                        plot = data.plot,
+                        plot = data.cleanPlot ?: data.plot,
                         jsonDetail = gson.toJson(data),
                         isBookmarked = false,
                         bookmarkedAt = 0L,
@@ -249,7 +249,7 @@ class MovieDetailRepository(
                 rating = detail.formattedRating,
                 releaseYear = detail.displayYear,
                 isTvShow = isTvShow,
-                plot = detail.plot,
+                plot = detail.cleanPlot ?: detail.plot,
                 jsonDetail = gson.toJson(detail),
                 isBookmarked = newBookmarkedState,
                 bookmarkedAt = timestamp,
