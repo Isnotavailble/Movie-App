@@ -13,11 +13,13 @@ import com.movieapp.data.local.DownloadEntity
 import com.movieapp.features.downloads.InAppVideoViewerModal
 import com.movieapp.features.downloads.VideoSource
 import com.movieapp.features.downloads.formatDurationMs
+import com.movieapp.features.downloads.resolveVideoPlaybackUri
 import com.movieapp.features.downloads.resolveVideoSource
 import com.movieapp.theme.MovieAppTheme
 import com.movieapp.util.AppLanguage
 import com.movieapp.util.LocalizationManager
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -84,6 +86,31 @@ class InAppVideoViewerTest {
         } finally {
             if (tempFile.exists()) tempFile.delete()
         }
+    }
+
+    @Test
+    fun testResolveVideoPlaybackUri() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+
+        // 1. Missing file & missing URI -> null
+        val downloadMissing = DownloadEntity(
+            downloadId = 200L,
+            title = "Missing Video",
+            fileName = "missing_${System.currentTimeMillis()}.mp4",
+            fileUri = null
+        )
+        val uri1 = resolveVideoPlaybackUri(context, downloadMissing)
+        assertNull(uri1)
+
+        // 2. Has valid content URI
+        val downloadContentUri = DownloadEntity(
+            downloadId = 201L,
+            title = "Content URI Video",
+            fileName = "dummy_${System.currentTimeMillis()}.mp4",
+            fileUri = "content://media/external/video/media/100"
+        )
+        val uri2 = resolveVideoPlaybackUri(context, downloadContentUri)
+        assertEquals("content://media/external/video/media/100", uri2.toString())
     }
 
     @Test
@@ -180,9 +207,9 @@ class InAppVideoViewerTest {
         val errorText = LocalizationManager.getString("video_player_error")
         composeTestRule.onNodeWithText(errorText).assertIsDisplayed()
 
-        // Click cancel button
+        // Click cancel button (icon-only with accessibility contentDescription)
         val cancelText = LocalizationManager.getString("cancel")
-        composeTestRule.onNodeWithText(cancelText).performClick()
+        composeTestRule.onNodeWithContentDescription(cancelText).performClick()
 
         assertTrue(dismissed)
     }

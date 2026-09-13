@@ -125,12 +125,14 @@ class DetailE2ETest {
         // Verify Title and Metadata
         composeTestRule.onNodeWithText("Stranger Things").assertIsDisplayed()
         composeTestRule.onNodeWithText("2016").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Story Summary").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("TV Show").assertIsDisplayed()
 
-        // Verify Season 1 Episodes are displayed initially
+        // Verify Season 1 Episodes are displayed initially (prioritized above Story Summary for TV shows)
         composeTestRule.onNodeWithText("Choose Season and Episode").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Chapter One: The Vanishing of Will Byers", substring = true).performScrollTo().assertIsDisplayed()
+
+        // Verify Story Summary is displayed
+        composeTestRule.onNodeWithText("Story Summary").performScrollTo().assertIsDisplayed()
 
         // Switch to Season 2
         composeTestRule.onNodeWithText("Season 2", useUnmergedTree = true).performClick()

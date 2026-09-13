@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -90,6 +91,7 @@ fun MovieDetailScreen(
     var showDownloadSheet by remember { mutableStateOf(false) }
     var downloadSheetTitle by remember { mutableStateOf("") }
     var currentDownloadLinks by remember { mutableStateOf<List<DownloadLinkDTO>>(emptyList()) }
+    var isPlotExpanded by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     if (showDownloadSheet) {
@@ -364,79 +366,9 @@ fun MovieDetailScreen(
                         }
                     }
 
-                    // Story Summary Card
-                    Spacer(modifier = Modifier.height(14.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(12.dp))
-                            .background(neoColors.surface, RoundedCornerShape(12.dp))
-                            .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
-                            .padding(14.dp)
-                    ) {
-                        Column {
-                            Text(
-                                text = t("story_summary"),
-                                fontFamily = headerFontFamily(),
-                                fontSize = 14.sp,
-                                lineHeight = 20.sp,
-                                color = neoColors.textPrimary,
-                                modifier = Modifier.semantics { heading() }
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = detail.plot ?: t("no_summary"),
-                                fontFamily = bodyFontFamily(),
-                                fontSize = 13.sp,
-                                lineHeight = 22.sp,
-                                color = neoColors.textSecondary
-                            )
-                        }
-                    }
-
                     val isTv = uiState.isTvShow || detail.isTvShow || detail.safeSeasons.isNotEmpty()
 
-                    // Download Button for Movies (positioned at the bottom, matching TV show action placement)
-                    if (!isTv || (detail.safeSeasons.isEmpty() && detail.safeMovieDownloadLinks.isNotEmpty())) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(10.dp))
-                                .background(neoColors.primary, RoundedCornerShape(10.dp))
-                                .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(10.dp))
-                                .clickable {
-                                    downloadSheetTitle = detail.displayTitle
-                                    currentDownloadLinks = detail.safeMovieDownloadLinks
-                                    showDownloadSheet = true
-                                }
-                                .padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = NeubrutalismIcons.Download,
-                                    contentDescription = null,
-                                    tint = neoColors.onPrimary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = t("get_download_links", detail.safeMovieDownloadLinks.size),
-                                    fontFamily = buttonFontFamily(),
-                                    fontSize = 14.sp,
-                                    lineHeight = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = neoColors.onPrimary
-                                )
-                            }
-                        }
-                    }
-
-                    // TV Shows: Seasons and Episodes
+                    // TV Shows: Seasons and Episodes (Prioritized above Story Summary for immediate access)
                     if (isTv && detail.safeSeasons.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
@@ -607,6 +539,92 @@ fun MovieDetailScreen(
                                         )
                                     }
                                 }
+                            }
+                        }
+                    }
+
+                    // Download Button for Movies (positioned prominently)
+                    if (!isTv || (detail.safeSeasons.isEmpty() && detail.safeMovieDownloadLinks.isNotEmpty())) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(10.dp))
+                                .background(neoColors.primary, RoundedCornerShape(10.dp))
+                                .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(10.dp))
+                                .clickable {
+                                    downloadSheetTitle = detail.displayTitle
+                                    currentDownloadLinks = detail.safeMovieDownloadLinks
+                                    showDownloadSheet = true
+                                }
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = NeubrutalismIcons.Download,
+                                    contentDescription = null,
+                                    tint = neoColors.onPrimary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = t("get_download_links", detail.safeMovieDownloadLinks.size),
+                                    fontFamily = buttonFontFamily(),
+                                    fontSize = 14.sp,
+                                    lineHeight = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = neoColors.onPrimary
+                                )
+                            }
+                        }
+                    }
+
+                    // Story Summary Card (Clean HTML, 3 lines max by default with Read More/Less toggle)
+                    val cleanSummary = remember(detail.plot) { detail.cleanPlot ?: detail.plot }
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(12.dp))
+                            .background(neoColors.surface, RoundedCornerShape(12.dp))
+                            .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
+                            .padding(14.dp)
+                    ) {
+                        Column {
+                            Text(
+                                text = t("story_summary"),
+                                fontFamily = headerFontFamily(),
+                                fontSize = 14.sp,
+                                lineHeight = 20.sp,
+                                color = neoColors.textPrimary,
+                                modifier = Modifier.semantics { heading() }
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = cleanSummary ?: t("no_summary"),
+                                fontFamily = bodyFontFamily(),
+                                fontSize = 13.sp,
+                                lineHeight = 22.sp,
+                                maxLines = if (isPlotExpanded) Int.MAX_VALUE else 3,
+                                overflow = TextOverflow.Ellipsis,
+                                color = neoColors.textSecondary
+                            )
+                            if (!cleanSummary.isNullOrBlank() && (cleanSummary.length > 160 || cleanSummary.contains("\n\n"))) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = if (isPlotExpanded) t("read_less") else t("read_more"),
+                                    fontFamily = buttonFontFamily(),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = neoColors.primary,
+                                    modifier = Modifier
+                                        .clickable { isPlotExpanded = !isPlotExpanded }
+                                        .padding(vertical = 2.dp)
+                                )
                             }
                         }
                     }

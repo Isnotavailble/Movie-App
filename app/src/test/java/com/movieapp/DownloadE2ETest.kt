@@ -5,6 +5,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -129,7 +130,7 @@ class DownloadE2ETest {
 
         // Verify completed movie card
         composeTestRule.onNodeWithText("Barreda (2026)").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Play Video").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Play Video").assertIsDisplayed()
     }
 
     @OptIn(ExperimentalMaterial3Api::class)

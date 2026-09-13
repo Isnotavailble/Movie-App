@@ -197,4 +197,66 @@ class TvShowSeasonAndFallbackTest {
         assertEquals(1, successResult?.data?.safeSeasons?.firstOrNull()?.safeEpisodes?.size)
         assertEquals(1, successResult?.data?.safeSeasons?.firstOrNull()?.safeEpisodes?.firstOrNull()?.safeDownloadLinks?.size)
     }
+
+    @Test
+    fun testHtmlSanitization_stripsAllTagsAndDecodesEntities() {
+        val rawHtml = "<p>Welcome to <b>The Bear</b> season 5!</p><br/><div class=\"desc\">Watch Carmy &amp; Sydney run the kitchen. &quot;Yes Chef!&#39;&quot;</div>"
+        val dto = MovieDetailDTO(
+            id = 5097L,
+            title = "The Bear",
+            slug = "the-bear-cc96s51d",
+            plot = rawHtml
+        )
+
+        val clean = dto.cleanPlot
+        assertNotNull(clean)
+        assertTrue("HTML tags should be stripped", !clean!!.contains("<p>") && !clean.contains("<b>") && !clean.contains("</div>"))
+        assertTrue("Entities should be decoded", clean.contains("&") && clean.contains("\"Yes Chef!'\""))
+        assertEquals("Welcome to The Bear season 5!\n\nWatch Carmy & Sydney run the kitchen. \"Yes Chef!'\"", clean)
+    }
+
+    @Test
+    fun testCleanPlotPersistedToDatabase_containsNoHtml() = runTest {
+        val rawHtml = "<p>A chaotic kitchen drama.</p><br>Rating &amp; reviews."
+        val theBearDetail = MovieDetailDTO(
+            id = 5097L,
+            title = "The Bear",
+            slug = "the-bear-cc96s51d",
+            plot = rawHtml,
+            seasons = listOf(SeasonDTO(id = 1L, rawSeasonNumber = 1, name = "Season 1"))
+        )
+
+        val primaryApi = object : MovieApiService {
+            override suspend fun getMovies(page: Int): MovieListResponseDTO = throw UnsupportedOperationException()
+            override suspend fun getTvShows(page: Int): MovieListResponseDTO = throw UnsupportedOperationException()
+            override suspend fun getMovieDetail(slug: String): MovieDetailResponseDTO = MovieDetailResponseDTO(success = false, data = null)
+            override suspend fun getTvShowDetail(slug: String): MovieDetailResponseDTO = MovieDetailResponseDTO(success = false, data = null)
+            override suspend fun searchTitles(keyword: String, page: Int): SearchResponseDTO = throw UnsupportedOperationException()
+        }
+
+        val fallbackApi = object : MovieApiService {
+            override suspend fun getMovies(page: Int): MovieListResponseDTO = throw UnsupportedOperationException()
+            override suspend fun getTvShows(page: Int): MovieListResponseDTO = throw UnsupportedOperationException()
+            override suspend fun getMovieDetail(slug: String): MovieDetailResponseDTO = MovieDetailResponseDTO(success = false, data = null)
+            override suspend fun getTvShowDetail(slug: String): MovieDetailResponseDTO = MovieDetailResponseDTO(success = true, data = theBearDetail)
+            override suspend fun searchTitles(keyword: String, page: Int): SearchResponseDTO = throw UnsupportedOperationException()
+        }
+
+        val repo = MovieDetailRepository(
+            apiService = primaryApi,
+            ioDispatcher = testDispatcher,
+            movieDao = movieDao,
+            fallbackApiService = fallbackApi
+        )
+
+        val flow = repo.getTvShowDetail("the-bear-cc96s51d")
+        val emissions = flow.toList()
+        val success = emissions.filterIsInstance<Resource.Success<MovieDetailDTO>>().firstOrNull()
+        assertNotNull(success)
+
+        val cachedEntity = movieDao.getMovieBySlug("the-bear-cc96s51d")
+        assertNotNull(cachedEntity)
+        assertTrue("Cached plot in Room should not contain HTML tags", cachedEntity?.plot?.contains("<p>") == false)
+        assertEquals("A chaotic kitchen drama.\n\nRating & reviews.", cachedEntity?.plot)
+    }
 }

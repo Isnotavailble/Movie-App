@@ -101,8 +101,34 @@ data class MovieDetailDTO(
     val safeMovieDownloadLinks: List<DownloadLinkDTO>
         get() = movieDownloadLinks ?: emptyList()
 
+    val cleanPlot: String?
+        get() = cleanHtml(plot)
+
     val isTvShow: Boolean
         get() = mediaType?.equals("tv-show", ignoreCase = true) == true || !seasons.isNullOrEmpty()
+}
+
+/**
+ * Strips HTML markup tags and decodes common HTML entities to ensure clean plain-text on the client side.
+ * Follows the Ponytail principle: zero external dependencies, robust Kotlin stdlib regex.
+ */
+fun cleanHtml(input: String?): String? {
+    if (input.isNullOrBlank()) return null
+    val s = input
+        .replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n")
+        .replace(Regex("</p>|</div>", RegexOption.IGNORE_CASE), "\n\n")
+        .replace(Regex("<[^>]+>"), "")
+        .replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace(Regex("[ \\t]+"), " ")
+        .replace(Regex(" *\n *"), "\n")
+        .replace(Regex("\n{3,}"), "\n\n")
+        .trim()
+    return s.ifEmpty { null }
 }
 
 /**

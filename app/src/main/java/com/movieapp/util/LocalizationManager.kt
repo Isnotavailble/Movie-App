@@ -54,6 +54,8 @@ object LocalizationManager {
         "back_to_list" to "Back to List",
         "story_summary" to "Story Summary",
         "no_summary" to "No summary is currently available for this title.",
+        "read_more" to "Read More",
+        "read_less" to "Read Less",
         "get_download_links" to "Get Download Links (%d)",
         "choose_season_episode" to "Choose Season and Episode",
         "download_episode" to "Download Episode",
