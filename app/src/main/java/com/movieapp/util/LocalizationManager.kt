@@ -123,7 +123,29 @@ object LocalizationManager {
         "video_player_error" to "Unable to play video file. Tap external to open in VLC or MX Player.",
         "video_player_tap_hint" to "Tap screen to toggle controls",
         "video_player_scrubber" to "Video timeline scrubber",
-        "video_player_screen_awake" to "Screen stays awake"
+        "video_player_screen_awake" to "Screen stays awake",
+        "video_player_fullscreen" to "Full screen",
+        "video_player_exit_fullscreen" to "Exit full screen",
+        "video_player_rotate" to "Rotate screen",
+        "video_player_aspect_ratio" to "Aspect ratio",
+        "video_player_aspect_fit" to "Fit",
+        "video_player_aspect_zoom" to "Crop to Fill",
+        "video_player_aspect_stretch" to "Stretch",
+        "video_player_speed" to "Playback speed",
+        "filter_genres" to "Genres",
+        "filter_genre_all" to "All",
+        "filter_rating" to "IMDb Rating",
+        "filter_rating_all" to "All",
+        "filter_rating_6" to "6+",
+        "filter_rating_7" to "7+",
+        "filter_rating_8" to "8+",
+        "sort_label" to "Sort",
+        "sort_default" to "Default",
+        "sort_top_rated" to "Top Rated",
+        "sort_newest" to "Newest Year",
+        "sort_title_az" to "Title (A-Z)",
+        "filter_reset" to "Reset Filters",
+        "filter_no_results" to "No movies match selected filters"
     )
 
     fun initialize(context: Context) {

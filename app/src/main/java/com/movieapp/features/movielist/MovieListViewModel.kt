@@ -26,6 +26,16 @@ enum class MediaCategory {
 }
 
 /**
+ * Supported movie & TV show sorting orders.
+ */
+enum class MovieSortOrder {
+    DEFAULT,
+    TOP_RATED,
+    NEWEST,
+    TITLE_AZ
+}
+
+/**
  * Immutable UI state for the media feed.
  */
 data class MovieListUiState(
@@ -44,7 +54,10 @@ data class MovieListUiState(
     val tvShowsSearchQuery: String = "",
     val moviesSearchResults: List<MovieDTO> = emptyList(),
     val tvShowsSearchResults: List<MovieDTO> = emptyList(),
-    val isSearching: Boolean = false
+    val isSearching: Boolean = false,
+    val selectedGenre: String? = null,
+    val minRating: Double = 0.0,
+    val sortOrder: MovieSortOrder = MovieSortOrder.DEFAULT
 ) {
     val currentSearchQuery: String
         get() = if (activeCategory == MediaCategory.MOVIES) moviesSearchQuery else tvShowsSearchQuery
@@ -52,12 +65,51 @@ data class MovieListUiState(
     val isSearchActive: Boolean
         get() = currentSearchQuery.isNotBlank()
 
-    val currentDisplayList: List<MovieDTO>
-        get() = if (isSearchActive) {
-            if (activeCategory == MediaCategory.MOVIES) moviesSearchResults else tvShowsSearchResults
+    val isFilterActive: Boolean
+        get() = selectedGenre != null || minRating > 0.0 || sortOrder != MovieSortOrder.DEFAULT
+
+    val currentRawList: List<MovieDTO>
+        get() = getRawListFor(activeCategory)
+
+    fun getRawListFor(category: MediaCategory): List<MovieDTO> {
+        val searchQ = if (category == MediaCategory.MOVIES) moviesSearchQuery else tvShowsSearchQuery
+        return if (searchQ.isNotBlank()) {
+            if (category == MediaCategory.MOVIES) moviesSearchResults else tvShowsSearchResults
         } else {
-            if (activeCategory == MediaCategory.MOVIES) movies else tvShows
+            if (category == MediaCategory.MOVIES) movies else tvShows
         }
+    }
+
+    val availableGenres: List<String>
+        get() = getAvailableGenresFor(activeCategory)
+
+    fun getAvailableGenresFor(category: MediaCategory): List<String> {
+        val fromData = getRawListFor(category).flatMap { it.categoryNames }.distinct().filter { it.isNotBlank() }
+        val fallbackDefaults = listOf("Action", "Adventure", "Animation", "Comedy", "Crime", "Drama", "Fantasy", "Horror", "Romance", "Sci-Fi", "Thriller")
+        return (fromData + fallbackDefaults).distinct().sorted()
+    }
+
+    val currentDisplayList: List<MovieDTO>
+        get() = getDisplayListFor(activeCategory)
+
+    fun getDisplayListFor(category: MediaCategory): List<MovieDTO> {
+        return getRawListFor(category).asSequence()
+            .filter { item ->
+                selectedGenre == null || item.categoryNames.any { it.equals(selectedGenre, ignoreCase = true) }
+            }
+            .filter { item ->
+                minRating <= 0.0 || (item.rating ?: 0.0) >= minRating
+            }
+            .let { seq ->
+                when (sortOrder) {
+                    MovieSortOrder.TOP_RATED -> seq.sortedByDescending { it.rating ?: 0.0 }
+                    MovieSortOrder.NEWEST -> seq.sortedByDescending { it.displayYear }
+                    MovieSortOrder.TITLE_AZ -> seq.sortedBy { it.displayTitle.lowercase() }
+                    MovieSortOrder.DEFAULT -> seq
+                }
+            }
+            .toList()
+    }
 
     val currentHasMore: Boolean
         get() = if (isSearchActive) {
@@ -68,6 +120,14 @@ data class MovieListUiState(
 
     val isSearchEmpty: Boolean
         get() = isSearchActive && !isSearching && currentDisplayList.isEmpty()
+
+    val isFilterEmpty: Boolean
+        get() = isFilterEmptyFor(activeCategory)
+
+    fun isFilterEmptyFor(category: MediaCategory): Boolean {
+        val raw = getRawListFor(category)
+        return isFilterActive && !isInitialLoading && getDisplayListFor(category).isEmpty() && raw.isNotEmpty()
+    }
 }
 
 /**
@@ -170,6 +230,45 @@ class MovieListViewModel(
     }
 
     /**
+     * Filters media items by selected genre. Passing null or "All" shows all genres.
+     */
+    fun selectGenre(genre: String?) {
+        val clean = if (genre == null || genre.equals("All", ignoreCase = true) || genre.isBlank()) null else genre
+        _uiState.update { it.copy(selectedGenre = clean) }
+        checkAutoPagination()
+    }
+
+    /**
+     * Filters media items by minimum rating (e.g. 6.0, 7.0, 8.0). 0.0 shows all.
+     */
+    fun selectMinRating(rating: Double) {
+        val clean = if (rating <= 0.0) 0.0 else rating
+        _uiState.update { it.copy(minRating = clean) }
+        checkAutoPagination()
+    }
+
+    /**
+     * Sets the sort order for movies and TV shows.
+     */
+    fun selectSortOrder(order: MovieSortOrder) {
+        _uiState.update { it.copy(sortOrder = order) }
+    }
+
+    /**
+     * Resets all genre, rating, and sort filters to defaults.
+     */
+    fun resetFilters() {
+        _uiState.update { it.copy(selectedGenre = null, minRating = 0.0, sortOrder = MovieSortOrder.DEFAULT) }
+    }
+
+    private fun checkAutoPagination() {
+        val state = _uiState.value
+        if (state.isFilterActive && state.currentDisplayList.size < 8 && state.currentHasMore && !state.isPaginating && !state.isInitialLoading) {
+            loadNextPage(state.activeCategory)
+        }
+    }
+
+    /**
      * Pull-to-refresh: resets page to 1 and reloads current active category.
      */
     fun refresh(targetCategory: MediaCategory? = null) {
@@ -263,6 +362,7 @@ class MovieListViewModel(
                                 errorMessage = null
                             )
                         }
+                        checkAutoPagination()
                     }
                     is Resource.Error -> {
                         _uiState.update {
@@ -313,6 +413,7 @@ class MovieListViewModel(
                                 errorMessage = null
                             )
                         }
+                        checkAutoPagination()
                     }
                     is Resource.Error -> {
                         _uiState.update {

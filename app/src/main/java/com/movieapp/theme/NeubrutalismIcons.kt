@@ -3,6 +3,7 @@ package com.movieapp.theme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DarkMode
@@ -41,6 +42,39 @@ object NeubrutalismIcons {
     val ArrowLeft: ImageVector get() = Icons.AutoMirrored.Filled.ArrowBack
     val Telegram: ImageVector get() = Icons.AutoMirrored.Filled.Send
     val Copy: ImageVector get() = Icons.Default.ContentCopy
+    val Check: ImageVector get() = Icons.Default.Check
+    val Sort: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "Sort",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            addPath(
+                pathData = androidx.compose.ui.graphics.vector.PathParser().parsePathString(
+                    "M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"
+                ).toNodes(),
+                fill = androidx.compose.ui.graphics.SolidColor(androidx.compose.ui.graphics.Color.Black)
+            )
+        }.build()
+    }
+    val Filter: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "Filter",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            addPath(
+                pathData = androidx.compose.ui.graphics.vector.PathParser().parsePathString(
+                    "M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"
+                ).toNodes(),
+                fill = androidx.compose.ui.graphics.SolidColor(androidx.compose.ui.graphics.Color.Black)
+            )
+        }.build()
+    }
     val Bookmark: ImageVector by lazy {
         ImageVector.Builder(
             name = "Bookmark",

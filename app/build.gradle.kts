@@ -22,18 +22,24 @@ android {
             useSupportLibrary = true
         }
 
-        // Read movie_api_url from root .env or fallback to default
+        // Read movie_api_url and FALLBACK_BASE_URL strictly from root .env (no hardcoded fallback URLs)
         val envFile = rootProject.file(".env")
         val envProperties = Properties()
         if (envFile.exists()) {
             envFile.inputStream().use { envProperties.load(it) }
+        } else {
+            throw GradleException("Root .env file is missing. Please create a .env file with movie_api_url and FALLBACK_BASE_URL.")
         }
-        val movieApiUrl = envProperties.getProperty("movie_api_url") ?: "https://www.homietv.com/api/"
+
+        val movieApiUrl = envProperties.getProperty("movie_api_url")
+            ?: envProperties.getProperty("MOVIE_API_URL")
+            ?: throw GradleException("Missing 'movie_api_url' in .env file.")
         buildConfigField("String", "MOVIE_API_URL", "\"$movieApiUrl\"")
 
         val fallbackMovieApiUrl = envProperties.getProperty("FALLBACK_BASE_URL")
             ?: envProperties.getProperty("fallback_movie_api_url")
-            ?: "https://ysflix.com/api/"
+            ?: envProperties.getProperty("fallback_base_url")
+            ?: throw GradleException("Missing 'FALLBACK_BASE_URL' in .env file.")
         buildConfigField("String", "FALLBACK_MOVIE_API_URL", "\"$fallbackMovieApiUrl\"")
     }
 

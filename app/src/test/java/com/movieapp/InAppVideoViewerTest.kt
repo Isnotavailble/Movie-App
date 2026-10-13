@@ -126,6 +126,14 @@ class InAppVideoViewerTest {
         assertEquals("Rewind 10 seconds", LocalizationManager.getString("video_player_rewind"))
         assertEquals("Forward 10 seconds", LocalizationManager.getString("video_player_forward"))
         assertEquals("External", LocalizationManager.getString("video_player_external"))
+        assertEquals("Full screen", LocalizationManager.getString("video_player_fullscreen"))
+        assertEquals("Exit full screen", LocalizationManager.getString("video_player_exit_fullscreen"))
+        assertEquals("Rotate screen", LocalizationManager.getString("video_player_rotate"))
+        assertEquals("Aspect ratio", LocalizationManager.getString("video_player_aspect_ratio"))
+        assertEquals("Fit", LocalizationManager.getString("video_player_aspect_fit"))
+        assertEquals("Crop to Fill", LocalizationManager.getString("video_player_aspect_zoom"))
+        assertEquals("Stretch", LocalizationManager.getString("video_player_aspect_stretch"))
+        assertEquals("Playback speed", LocalizationManager.getString("video_player_speed"))
 
         // Test Myanmar
         LocalizationManager.setLanguage(AppLanguage.MY)
@@ -135,6 +143,14 @@ class InAppVideoViewerTest {
         assertEquals("၁၀ စက္ကန့် နောက်သို့", LocalizationManager.getString("video_player_rewind"))
         assertEquals("၁၀ စက္ကန့် ရှေ့သို့", LocalizationManager.getString("video_player_forward"))
         assertEquals("အခြားအက်ပ်", LocalizationManager.getString("video_player_external"))
+        assertEquals("မျက်နှာပြင်ပြည့်", LocalizationManager.getString("video_player_fullscreen"))
+        assertEquals("မျက်နှာပြင်ပြည့်မှ ထွက်မည်", LocalizationManager.getString("video_player_exit_fullscreen"))
+        assertEquals("မျက်နှာပြင် လှည့်မည်", LocalizationManager.getString("video_player_rotate"))
+        assertEquals("ဗီဒီယို အချိုးအစား", LocalizationManager.getString("video_player_aspect_ratio"))
+        assertEquals("အံဝင်ခွင်ကျ", LocalizationManager.getString("video_player_aspect_fit"))
+        assertEquals("မျက်နှာပြင်အပြည့်", LocalizationManager.getString("video_player_aspect_zoom"))
+        assertEquals("ဆန့်ထွက်", LocalizationManager.getString("video_player_aspect_stretch"))
+        assertEquals("အမြန်နှုန်း", LocalizationManager.getString("video_player_speed"))
     }
 
     @Test
@@ -173,6 +189,60 @@ class InAppVideoViewerTest {
 
         // Verify onDismiss callback fired
         assertTrue(dismissed)
+    }
+
+    @Test
+    fun testInAppVideoViewerModal_newControlsRenderAndInteract() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        LocalizationManager.initialize(context)
+        LocalizationManager.setLanguage(AppLanguage.EN)
+
+        val download = DownloadEntity(
+            downloadId = 999L,
+            title = "Spider-Man: Beyond the Spider-Verse",
+            fileName = "SpiderMan_1080p.mp4",
+            fileUri = "content://media/external/video/media/999",
+            totalBytes = 2_147_483_648L,
+            downloadedBytes = 2_147_483_648L,
+            status = 8
+        )
+
+        composeTestRule.setContent {
+            MovieAppTheme {
+                InAppVideoViewerModal(
+                    download = download,
+                    onDismiss = {}
+                )
+            }
+        }
+
+        // 1. Fullscreen Button (renders and toggles between Fullscreen and Exit Fullscreen)
+        val fullDesc = LocalizationManager.getString("video_player_fullscreen")
+        val exitFullDesc = LocalizationManager.getString("video_player_exit_fullscreen")
+        val fullNode = composeTestRule.onNodeWithContentDescription(fullDesc)
+        fullNode.assertIsDisplayed()
+        fullNode.performClick()
+
+        // After clicking, button content description becomes "Exit full screen"
+        val exitFullNode = composeTestRule.onNodeWithContentDescription(exitFullDesc)
+        exitFullNode.assertIsDisplayed()
+        exitFullNode.performClick()
+        composeTestRule.onNodeWithContentDescription(fullDesc).assertIsDisplayed()
+
+        // 2. Rotate Screen Button (renders and can be clicked)
+        val rotateDesc = LocalizationManager.getString("video_player_rotate")
+        composeTestRule.onNodeWithContentDescription(rotateDesc).assertIsDisplayed().performClick()
+
+        // 3. Aspect Ratio Button (renders and can be clicked to cycle modes)
+        val aspectPrefix = LocalizationManager.getString("video_player_aspect_ratio")
+        val aspectFit = LocalizationManager.getString("video_player_aspect_fit")
+        val aspectDesc = "$aspectPrefix: $aspectFit"
+        composeTestRule.onNodeWithContentDescription(aspectDesc).assertIsDisplayed().performClick()
+
+        // 4. Playback Speed Button (renders 1.0x by default, clicking cycles to 1.25x)
+        val speedPrefix = LocalizationManager.getString("video_player_speed")
+        composeTestRule.onNodeWithContentDescription("$speedPrefix 1.0x").assertIsDisplayed().performClick()
+        composeTestRule.onNodeWithContentDescription("$speedPrefix 1.25x").assertIsDisplayed()
     }
 
     @Test

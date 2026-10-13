@@ -1,14 +1,21 @@
 package com.movieapp.features.downloads
 
+import android.app.Activity
 import android.app.DownloadManager
 import android.content.Context
+import android.content.ContextWrapper
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Environment
+import android.view.View
+import android.view.Window
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,10 +33,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
@@ -39,6 +50,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +59,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
@@ -60,11 +75,16 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.content.FileProvider
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.movieapp.data.local.DownloadEntity
 import com.movieapp.features.downloadlinks.DownloadManagerHelper
@@ -199,6 +219,32 @@ fun formatDurationMs(milliseconds: Long): String {
 }
 
 /**
+ * Helper to find the hosting Activity from a Context.
+ */
+fun Context.findActivity(): Activity? {
+    var ctx = this
+    while (ctx is ContextWrapper) {
+        if (ctx is Activity) return ctx
+        ctx = ctx.baseContext
+    }
+    return null
+}
+
+/**
+ * Helper to resolve the Dialog's hosting Window.
+ */
+fun findDialogWindow(view: View): Window? {
+    var parent = view.parent
+    while (parent != null) {
+        if (parent is DialogWindowProvider) {
+            return parent.window
+        }
+        parent = parent.parent
+    }
+    return null
+}
+
+/**
  * In-app video viewer modal adhering strictly to DESIGN.md Neobrutalism rules,
  * WCAG 2.2 AA accessibility standards, and powered by AndroidX Media3 (ExoPlayer)
  * for seamless playback of downloaded MP4 and MKV movies.
@@ -210,6 +256,9 @@ fun InAppVideoViewerModal(
 ) {
     val context = LocalContext.current
     val currentView = LocalView.current
+    val activity = remember(context) { context.findActivity() }
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     // Localized strings read in composable context
     val closeLabel = t("video_player_close")
@@ -220,15 +269,38 @@ fun InAppVideoViewerModal(
     val externalDescLabel = t("video_player_external_desc")
     val scrubberLabel = t("video_player_scrubber")
     val tapHintLabel = t("video_player_tap_hint")
-    val screenAwakeLabel = t("video_player_screen_awake")
     val errorLabel = t("video_player_error")
     val cancelLabel = t("cancel")
+    val fullscreenLabel = t("video_player_fullscreen")
+    val exitFullscreenLabel = t("video_player_exit_fullscreen")
+    val rotateLabel = t("video_player_rotate")
+    val aspectRatioLabel = t("video_player_aspect_ratio")
+    val aspectFitLabel = t("video_player_aspect_fit")
+    val aspectZoomLabel = t("video_player_aspect_zoom")
+    val aspectStretchLabel = t("video_player_aspect_stretch")
+    val speedLabel = t("video_player_speed")
+
+    val targetWindow = remember(currentView, activity) {
+        findDialogWindow(currentView) ?: activity?.window
+    }
 
     // Keep screen awake while video viewer is in foreground
     DisposableEffect(currentView) {
         currentView.keepScreenOn = true
         onDispose {
             currentView.keepScreenOn = false
+        }
+    }
+
+    // Restore orientation and system bars on exit
+    DisposableEffect(activity, targetWindow) {
+        val originalOrientation = activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        onDispose {
+            activity?.requestedOrientation = originalOrientation
+            targetWindow?.let { win ->
+                val insetsController = WindowCompat.getInsetsController(win, win.decorView)
+                insetsController.show(WindowInsetsCompat.Type.systemBars())
+            }
         }
     }
 
@@ -244,6 +316,31 @@ fun InAppVideoViewerModal(
     var isError by remember { mutableStateOf(mediaUri == null) }
     var controlsVisible by remember { mutableStateOf(true) }
     var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var isFullscreen by remember { mutableStateOf(false) }
+    var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
+    var playbackSpeed by remember { mutableFloatStateOf(1.0f) }
+    var feedbackToastText by remember { mutableStateOf<String?>(null) }
+
+    // Immersive fullscreen mode
+    LaunchedEffect(isFullscreen, targetWindow) {
+        targetWindow?.let { win ->
+            val insetsController = WindowCompat.getInsetsController(win, win.decorView)
+            if (isFullscreen) {
+                insetsController.hide(WindowInsetsCompat.Type.systemBars())
+                insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            } else {
+                insetsController.show(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+    }
+
+    // Auto-clear feedback badge
+    LaunchedEffect(feedbackToastText) {
+        if (feedbackToastText != null) {
+            delay(1200L)
+            feedbackToastText = null
+        }
+    }
 
     val exoPlayer = remember(context, mediaUri) {
         if (mediaUri != null) {
@@ -331,13 +428,6 @@ fun InAppVideoViewerModal(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) {
-                    controlsVisible = !controlsVisible
-                    lastInteractionTime = System.currentTimeMillis()
-                }
         ) {
             // Media3 PlayerView Video Surface
             if (!isError && exoPlayer != null) {
@@ -346,16 +436,51 @@ fun InAppVideoViewerModal(
                         PlayerView(ctx).apply {
                             player = exoPlayer
                             useController = false
+                            this.resizeMode = resizeMode
                         }
                     },
                     update = { view ->
                         if (view.player != exoPlayer) {
                             view.player = exoPlayer
                         }
+                        if (view.resizeMode != resizeMode) {
+                            view.resizeMode = resizeMode
+                        }
                     },
                     modifier = Modifier.fillMaxSize()
                 )
             }
+
+            // Gesture Detector Surface (Single tap: toggle controls, Double tap: seek -10s / +10s)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = {
+                                controlsVisible = !controlsVisible
+                                lastInteractionTime = System.currentTimeMillis()
+                            },
+                            onDoubleTap = { offset ->
+                                exoPlayer?.let { player ->
+                                    if (offset.x < size.width / 2) {
+                                        val target = (player.currentPosition - 10_000L).coerceAtLeast(0L)
+                                        player.seekTo(target)
+                                        currentPositionMs = target
+                                        feedbackToastText = "-10s"
+                                    } else {
+                                        val maxPos = if (totalDurationMs > 0L) totalDurationMs else Long.MAX_VALUE
+                                        val target = (player.currentPosition + 10_000L).coerceAtMost(maxPos)
+                                        player.seekTo(target)
+                                        currentPositionMs = target
+                                        feedbackToastText = "+10s"
+                                    }
+                                    lastInteractionTime = System.currentTimeMillis()
+                                }
+                            }
+                        )
+                    }
+            )
 
             // Buffering Indicator
             if (isBuffering && !isError) {
@@ -458,28 +583,78 @@ fun InAppVideoViewerModal(
 
                             Spacer(modifier = Modifier.width(10.dp))
 
-                            // External App Button (44dp min height, Icon only)
-                            Box(
-                                modifier = Modifier
-                                    .defaultMinSize(minWidth = 44.dp, minHeight = 44.dp)
-                                    .neoShadow(offsetX = 2.dp, offsetY = 2.dp, color = NeoBlack, shape = RoundedCornerShape(10.dp))
-                                    .background(SpideyBlue, RoundedCornerShape(10.dp))
-                                    .neoBorder(width = 1.5.dp, color = NeoBlack, shape = RoundedCornerShape(10.dp))
-                                    .clickable {
-                                        DownloadManagerHelper.openDownloadedFile(context, download)
-                                    }
-                                    .semantics {
-                                        role = Role.Button
-                                        contentDescription = externalDescLabel
-                                    },
-                                contentAlignment = Alignment.Center
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                    contentDescription = null,
-                                    tint = WebWhite,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                                // Playback Speed Button (min 48dp x 48dp)
+                                val speedText = when (playbackSpeed) {
+                                    0.75f -> "0.75x"
+                                    1.0f -> "1.0x"
+                                    1.25f -> "1.25x"
+                                    1.5f -> "1.5x"
+                                    2.0f -> "2.0x"
+                                    else -> "${playbackSpeed}x"
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                                        .neoShadow(offsetX = 2.dp, offsetY = 2.dp, color = NeoBlack, shape = RoundedCornerShape(10.dp))
+                                        .background(Color(0xFF1E293B), RoundedCornerShape(10.dp))
+                                        .neoBorder(width = 1.5.dp, color = NeoBlack, shape = RoundedCornerShape(10.dp))
+                                        .clickable {
+                                            val speeds = listOf(0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
+                                            val currentIdx = speeds.indexOf(playbackSpeed)
+                                            val nextSpeed = if (currentIdx in 0 until speeds.size - 1) {
+                                                speeds[currentIdx + 1]
+                                            } else {
+                                                speeds[0]
+                                            }
+                                            playbackSpeed = nextSpeed
+                                            exoPlayer?.setPlaybackSpeed(nextSpeed)
+                                            feedbackToastText = "${nextSpeed}x"
+                                            lastInteractionTime = System.currentTimeMillis()
+                                        }
+                                        .semantics {
+                                            role = Role.Button
+                                            contentDescription = "$speedLabel $speedText"
+                                        }
+                                        .padding(horizontal = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = speedText,
+                                        fontFamily = badgeFontFamily(),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        color = WebGold
+                                    )
+                                }
+
+                                // External App Button (min 48dp x 48dp)
+                                Box(
+                                    modifier = Modifier
+                                        .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                                        .neoShadow(offsetX = 2.dp, offsetY = 2.dp, color = NeoBlack, shape = RoundedCornerShape(10.dp))
+                                        .background(SpideyBlue, RoundedCornerShape(10.dp))
+                                        .neoBorder(width = 1.5.dp, color = NeoBlack, shape = RoundedCornerShape(10.dp))
+                                        .clickable {
+                                            DownloadManagerHelper.openDownloadedFile(context, download)
+                                        }
+                                        .semantics {
+                                            role = Role.Button
+                                            contentDescription = externalDescLabel
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                        contentDescription = null,
+                                        tint = WebWhite,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -655,7 +830,7 @@ fun InAppVideoViewerModal(
 
                             Spacer(modifier = Modifier.height(6.dp))
 
-                            // Microcopy & Screen-Awake Status
+                            // Bottom Actions Row: Tap hint on left, Aspect Ratio, Rotate, Fullscreen on right
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -665,28 +840,141 @@ fun InAppVideoViewerModal(
                                     text = tapHintLabel,
                                     fontFamily = bodyFontFamily(),
                                     fontSize = 11.sp,
-                                    color = Color(0xFF94A3B8)
+                                    color = Color(0xFF94A3B8),
+                                    modifier = Modifier.weight(1f, fill = false)
                                 )
 
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
+                                    // Aspect Ratio Toggle Button (min 48dp x 48dp)
+                                    val aspectModeLabel = when (resizeMode) {
+                                        AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> aspectZoomLabel
+                                        AspectRatioFrameLayout.RESIZE_MODE_FILL -> aspectStretchLabel
+                                        else -> aspectFitLabel
+                                    }
+
                                     Box(
                                         modifier = Modifier
-                                            .size(6.dp)
-                                            .background(WebGold, CircleShape)
-                                    )
-                                    Text(
-                                        text = screenAwakeLabel,
-                                        fontFamily = badgeFontFamily(),
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp,
-                                        color = WebGold
-                                    )
+                                            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                                            .neoShadow(offsetX = 2.dp, offsetY = 2.dp, color = NeoBlack, shape = RoundedCornerShape(10.dp))
+                                            .background(Color(0xFF1E293B), RoundedCornerShape(10.dp))
+                                            .neoBorder(width = 1.5.dp, color = NeoBlack, shape = RoundedCornerShape(10.dp))
+                                            .clickable {
+                                                resizeMode = when (resizeMode) {
+                                                    AspectRatioFrameLayout.RESIZE_MODE_FIT -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                                                    AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                                                    else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                                                }
+                                                feedbackToastText = when (resizeMode) {
+                                                    AspectRatioFrameLayout.RESIZE_MODE_FIT -> "FIT (100%)"
+                                                    AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> "ZOOM (FILL)"
+                                                    else -> "STRETCH"
+                                                }
+                                                lastInteractionTime = System.currentTimeMillis()
+                                            }
+                                            .semantics {
+                                                role = Role.Button
+                                                contentDescription = "$aspectRatioLabel: $aspectModeLabel"
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.AspectRatio,
+                                            contentDescription = null,
+                                            tint = WebWhite,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+
+                                    // Rotate Screen Button (min 48dp x 48dp)
+                                    Box(
+                                        modifier = Modifier
+                                            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                                            .neoShadow(offsetX = 2.dp, offsetY = 2.dp, color = NeoBlack, shape = RoundedCornerShape(10.dp))
+                                            .background(SpideyBlue, RoundedCornerShape(10.dp))
+                                            .neoBorder(width = 1.5.dp, color = NeoBlack, shape = RoundedCornerShape(10.dp))
+                                            .clickable {
+                                                val target = if (isLandscape) {
+                                                    ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                                                } else {
+                                                    ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                                                }
+                                                activity?.requestedOrientation = target
+                                                feedbackToastText = if (isLandscape) "PORTRAIT" else "LANDSCAPE"
+                                                lastInteractionTime = System.currentTimeMillis()
+                                            }
+                                            .semantics {
+                                                role = Role.Button
+                                                contentDescription = rotateLabel
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ScreenRotation,
+                                            contentDescription = null,
+                                            tint = WebWhite,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+
+                                    // Fullscreen Button (min 48dp x 48dp)
+                                    Box(
+                                        modifier = Modifier
+                                            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                                            .neoShadow(offsetX = 2.dp, offsetY = 2.dp, color = NeoBlack, shape = RoundedCornerShape(10.dp))
+                                            .background(if (isFullscreen) SpideyRed else Color(0xFF1E293B), RoundedCornerShape(10.dp))
+                                            .neoBorder(width = 1.5.dp, color = NeoBlack, shape = RoundedCornerShape(10.dp))
+                                            .clickable {
+                                                isFullscreen = !isFullscreen
+                                                feedbackToastText = if (isFullscreen) "FULLSCREEN" else "NORMAL"
+                                                lastInteractionTime = System.currentTimeMillis()
+                                            }
+                                            .semantics {
+                                                role = Role.Button
+                                                contentDescription = if (isFullscreen) exitFullscreenLabel else fullscreenLabel
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                                            contentDescription = null,
+                                            tint = WebWhite,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
+                    }
+                }
+            }
+
+            // Floating Transient Feedback Badge
+            AnimatedVisibility(
+                visible = feedbackToastText != null,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 96.dp)
+            ) {
+                feedbackToastText?.let { toast ->
+                    Box(
+                        modifier = Modifier
+                            .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = NeoBlack, shape = RoundedCornerShape(8.dp))
+                            .background(WebGold, RoundedCornerShape(8.dp))
+                            .neoBorder(width = 2.dp, color = NeoBlack, shape = RoundedCornerShape(8.dp))
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = toast,
+                            fontFamily = badgeFontFamily(),
+                            fontWeight = FontWeight.Black,
+                            fontSize = 12.sp,
+                            color = NeoBlack
+                        )
                     }
                 }
             }

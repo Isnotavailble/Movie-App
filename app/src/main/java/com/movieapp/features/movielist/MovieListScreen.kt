@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -25,6 +27,8 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -34,8 +38,10 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -116,12 +122,9 @@ fun MovieListScreen(
 
     val searchQuery = if (targetCategory == MediaCategory.MOVIES) uiState.moviesSearchQuery else uiState.tvShowsSearchQuery
     val isSearchActive = searchQuery.isNotBlank()
-    val displayList = if (isSearchActive) {
-        if (targetCategory == MediaCategory.MOVIES) uiState.moviesSearchResults else uiState.tvShowsSearchResults
-    } else {
-        if (targetCategory == MediaCategory.MOVIES) uiState.movies else uiState.tvShows
-    }
+    val displayList = uiState.getDisplayListFor(targetCategory)
     val isSearchEmpty = isSearchActive && !uiState.isSearching && displayList.isEmpty()
+    val isFilterEmpty = uiState.isFilterEmptyFor(targetCategory)
 
     Box(
         modifier = modifier
@@ -154,7 +157,22 @@ fun MovieListScreen(
                 }
             )
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Dynamic Genre, Rating and Sort Controls
+            FilterAndSortBar(
+                availableGenres = uiState.getAvailableGenresFor(targetCategory),
+                selectedGenre = uiState.selectedGenre,
+                onSelectGenre = { viewModel.selectGenre(it) },
+                selectedRating = uiState.minRating,
+                onSelectRating = { viewModel.selectMinRating(it) },
+                sortOrder = uiState.sortOrder,
+                onSelectSortOrder = { viewModel.selectSortOrder(it) },
+                isFilterActive = uiState.isFilterActive,
+                onResetFilters = { viewModel.resetFilters() }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Search Empty State
             if (isSearchEmpty) {
@@ -206,6 +224,11 @@ fun MovieListScreen(
                         )
                     }
                 }
+            } else if (isFilterEmpty) {
+                FilterEmptyState(
+                    onResetClick = { viewModel.resetFilters() },
+                    modifier = Modifier.weight(1f)
+                )
             } else if (uiState.isInitialLoading && displayList.isEmpty()) {
                 // Initial Loading State with Skeleton Cards
                 com.movieapp.theme.MovieListFeedSkeleton(modifier = Modifier.weight(1f))
@@ -556,5 +579,414 @@ private fun MovieGridCard(
                 }
             }
         }
+    }
+}
+
+/**
+ * Neobrutalist filter and sort bar containing horizontal genre chips,
+ * rating thresholds (All, 6+, 7+, 8+), and a vector sort dropdown.
+ */
+@Composable
+fun FilterAndSortBar(
+    availableGenres: List<String>,
+    selectedGenre: String?,
+    onSelectGenre: (String?) -> Unit,
+    selectedRating: Double,
+    onSelectRating: (Double) -> Unit,
+    sortOrder: MovieSortOrder,
+    onSelectSortOrder: (MovieSortOrder) -> Unit,
+    isFilterActive: Boolean,
+    onResetFilters: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val neoColors = MaterialTheme.neoColors
+    var isSortExpanded by remember { mutableStateOf(false) }
+
+    val resetLabel = t("filter_reset")
+    val sortLabel = t("sort_label")
+    val allGenreLabel = t("filter_genre_all")
+    val allRatingLabel = t("filter_rating_all")
+    val rating6Label = t("filter_rating_6")
+    val rating7Label = t("filter_rating_7")
+    val rating8Label = t("filter_rating_8")
+    val sortDefaultLabel = t("sort_default")
+    val sortTopRatedLabel = t("sort_top_rated")
+    val sortNewestLabel = t("sort_newest")
+    val sortTitleAzLabel = t("sort_title_az")
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // 1. Horizontal scrollable Genre Chips
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+        ) {
+            val isAllSelected = selectedGenre == null
+            item(key = "genre_all") {
+                NeobrutalistChip(
+                    text = allGenreLabel,
+                    isSelected = isAllSelected,
+                    onClick = { onSelectGenre(null) },
+                    selectedBgColor = neoColors.primary,
+                    selectedTextColor = neoColors.onPrimary
+                )
+            }
+
+            items(availableGenres, key = { "genre_$it" }) { genre ->
+                val isSelected = selectedGenre.equals(genre, ignoreCase = true)
+                NeobrutalistChip(
+                    text = genre,
+                    isSelected = isSelected,
+                    onClick = {
+                        if (isSelected) onSelectGenre(null) else onSelectGenre(genre)
+                    },
+                    selectedBgColor = neoColors.primary,
+                    selectedTextColor = neoColors.onPrimary
+                )
+            }
+        }
+
+        // 2. Rating chips & Sort Dropdown Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Rating filters: All, 6+, 7+, 8+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                NeobrutalistRatingChip(
+                    text = allRatingLabel,
+                    isSelected = selectedRating <= 0.0,
+                    showStar = false,
+                    onClick = { onSelectRating(0.0) }
+                )
+
+                NeobrutalistRatingChip(
+                    text = rating6Label,
+                    isSelected = selectedRating == 6.0,
+                    showStar = true,
+                    onClick = { onSelectRating(if (selectedRating == 6.0) 0.0 else 6.0) }
+                )
+
+                NeobrutalistRatingChip(
+                    text = rating7Label,
+                    isSelected = selectedRating == 7.0,
+                    showStar = true,
+                    onClick = { onSelectRating(if (selectedRating == 7.0) 0.0 else 7.0) }
+                )
+
+                NeobrutalistRatingChip(
+                    text = rating8Label,
+                    isSelected = selectedRating == 8.0,
+                    showStar = true,
+                    onClick = { onSelectRating(if (selectedRating == 8.0) 0.0 else 8.0) }
+                )
+            }
+
+            // Right side: Reset (if active) & Sort Dropdown
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (isFilterActive) {
+                    Box(
+                        modifier = Modifier
+                            .defaultMinSize(minWidth = 36.dp, minHeight = 36.dp)
+                            .neoShadow(offsetX = 2.dp, offsetY = 2.dp, color = neoColors.shadow, shape = RoundedCornerShape(8.dp))
+                            .background(neoColors.surface, RoundedCornerShape(8.dp))
+                            .neoBorder(width = 1.5.dp, color = neoColors.border, shape = RoundedCornerShape(8.dp))
+                            .clickable(onClick = onResetFilters)
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                            .semantics {
+                                role = Role.Button
+                                contentDescription = resetLabel
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = NeubrutalismIcons.Close,
+                            contentDescription = null,
+                            tint = neoColors.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                // Sort Dropdown Button
+                Box {
+                    val isCustomSort = sortOrder != MovieSortOrder.DEFAULT
+                    val sortBg = if (isCustomSort) neoColors.secondary else neoColors.surface
+                    val sortContentColor = if (isCustomSort) neoColors.onPrimary else neoColors.textPrimary
+
+                    Row(
+                        modifier = Modifier
+                            .defaultMinSize(minHeight = 36.dp)
+                            .neoShadow(offsetX = 2.dp, offsetY = 2.dp, color = neoColors.shadow, shape = RoundedCornerShape(8.dp))
+                            .background(sortBg, RoundedCornerShape(8.dp))
+                            .neoBorder(width = 1.5.dp, color = neoColors.border, shape = RoundedCornerShape(8.dp))
+                            .clickable { isSortExpanded = true }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                            .semantics {
+                                role = Role.Button
+                                contentDescription = sortLabel
+                            },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = NeubrutalismIcons.Sort,
+                            contentDescription = null,
+                            tint = sortContentColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = when (sortOrder) {
+                                MovieSortOrder.DEFAULT -> sortLabel
+                                MovieSortOrder.TOP_RATED -> sortTopRatedLabel
+                                MovieSortOrder.NEWEST -> sortNewestLabel
+                                MovieSortOrder.TITLE_AZ -> sortTitleAzLabel
+                            },
+                            fontFamily = buttonFontFamily(),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = sortContentColor
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = isSortExpanded,
+                        onDismissRequest = { isSortExpanded = false },
+                        modifier = Modifier
+                            .background(neoColors.surface, RoundedCornerShape(8.dp))
+                            .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(8.dp))
+                            .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(8.dp))
+                    ) {
+                        SortMenuItem(
+                            text = sortDefaultLabel,
+                            isSelected = sortOrder == MovieSortOrder.DEFAULT,
+                            onClick = {
+                                onSelectSortOrder(MovieSortOrder.DEFAULT)
+                                isSortExpanded = false
+                            }
+                        )
+                        SortMenuItem(
+                            text = sortTopRatedLabel,
+                            isSelected = sortOrder == MovieSortOrder.TOP_RATED,
+                            onClick = {
+                                onSelectSortOrder(MovieSortOrder.TOP_RATED)
+                                isSortExpanded = false
+                            }
+                        )
+                        SortMenuItem(
+                            text = sortNewestLabel,
+                            isSelected = sortOrder == MovieSortOrder.NEWEST,
+                            onClick = {
+                                onSelectSortOrder(MovieSortOrder.NEWEST)
+                                isSortExpanded = false
+                            }
+                        )
+                        SortMenuItem(
+                            text = sortTitleAzLabel,
+                            isSelected = sortOrder == MovieSortOrder.TITLE_AZ,
+                            onClick = {
+                                onSelectSortOrder(MovieSortOrder.TITLE_AZ)
+                                isSortExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Neobrutalist filter empty state with a Reset Filters button.
+ */
+@Composable
+private fun FilterEmptyState(
+    onResetClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val neoColors = MaterialTheme.neoColors
+    val emptyTitle = t("filter_no_results")
+    val emptyDesc = t("filter_empty_desc")
+    val resetLabel = t("filter_reset")
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(top = 24.dp),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .fillMaxWidth()
+                .neoShadow(offsetX = 3.dp, offsetY = 3.dp, color = neoColors.shadow, shape = RoundedCornerShape(12.dp))
+                .background(neoColors.surface, RoundedCornerShape(12.dp))
+                .neoBorder(width = 2.dp, color = neoColors.border, shape = RoundedCornerShape(12.dp))
+                .padding(24.dp)
+        ) {
+            Icon(
+                imageVector = NeubrutalismIcons.Filter,
+                contentDescription = null,
+                tint = neoColors.textSecondary,
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = emptyTitle,
+                fontFamily = headerFontFamily(),
+                fontSize = 16.sp,
+                lineHeight = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = neoColors.textPrimary,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = emptyDesc,
+                fontFamily = bodyFontFamily(),
+                fontSize = 13.sp,
+                lineHeight = 20.sp,
+                color = neoColors.textSecondary,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            NeoButton(
+                onClick = onResetClick,
+                text = resetLabel,
+                backgroundColor = neoColors.primary,
+                contentColor = neoColors.onPrimary
+            )
+        }
+    }
+}
+
+@Composable
+private fun SortMenuItem(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val neoColors = MaterialTheme.neoColors
+    DropdownMenuItem(
+        text = {
+            Text(
+                text = text,
+                fontFamily = bodyFontFamily(),
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                fontSize = 13.sp,
+                color = if (isSelected) neoColors.primary else neoColors.textPrimary
+            )
+        },
+        trailingIcon = if (isSelected) {
+            {
+                Icon(
+                    imageVector = NeubrutalismIcons.Check,
+                    contentDescription = null,
+                    tint = neoColors.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        } else null,
+        onClick = onClick,
+        modifier = Modifier.defaultMinSize(minHeight = 44.dp)
+    )
+}
+
+@Composable
+private fun NeobrutalistChip(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    selectedBgColor: androidx.compose.ui.graphics.Color,
+    selectedTextColor: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier
+) {
+    val neoColors = MaterialTheme.neoColors
+    val bg = if (isSelected) selectedBgColor else neoColors.surface
+    val textColor = if (isSelected) selectedTextColor else neoColors.textPrimary
+    val borderWidth = if (isSelected) 2.dp else 1.5.dp
+    val shadowOffset = if (isSelected) 2.dp else 1.5.dp
+
+    Box(
+        modifier = modifier
+            .defaultMinSize(minHeight = 36.dp)
+            .neoShadow(offsetX = shadowOffset, offsetY = shadowOffset, color = neoColors.shadow, shape = RoundedCornerShape(8.dp))
+            .background(bg, RoundedCornerShape(8.dp))
+            .neoBorder(width = borderWidth, color = neoColors.border, shape = RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .semantics {
+                role = Role.Tab
+                this.selected = isSelected
+                contentDescription = text
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            fontFamily = badgeFontFamily(),
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            fontSize = 12.sp,
+            color = textColor
+        )
+    }
+}
+
+@Composable
+private fun NeobrutalistRatingChip(
+    text: String,
+    isSelected: Boolean,
+    showStar: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val neoColors = MaterialTheme.neoColors
+    val bg = if (isSelected) neoColors.tertiary else neoColors.surface
+    val textColor = if (isSelected) NeoBlack else neoColors.textPrimary
+    val borderWidth = if (isSelected) 2.dp else 1.5.dp
+    val shadowOffset = if (isSelected) 2.dp else 1.5.dp
+
+    Row(
+        modifier = modifier
+            .defaultMinSize(minHeight = 34.dp)
+            .neoShadow(offsetX = shadowOffset, offsetY = shadowOffset, color = neoColors.shadow, shape = RoundedCornerShape(8.dp))
+            .background(bg, RoundedCornerShape(8.dp))
+            .neoBorder(width = borderWidth, color = neoColors.border, shape = RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 5.dp)
+            .semantics {
+                role = Role.Tab
+                this.selected = isSelected
+                contentDescription = "$text rating"
+            },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
+        if (showStar) {
+            Icon(
+                imageVector = NeubrutalismIcons.Star,
+                contentDescription = null,
+                tint = if (isSelected) NeoBlack else neoColors.tertiary,
+                modifier = Modifier.size(13.dp)
+            )
+        }
+        Text(
+            text = text,
+            fontFamily = badgeFontFamily(),
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            fontSize = 11.5.sp,
+            color = textColor
+        )
     }
 }
